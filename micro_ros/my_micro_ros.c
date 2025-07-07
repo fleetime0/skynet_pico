@@ -7,10 +7,7 @@
 #include "rmw_microros/rmw_microros.h"
 
 bool my_micro_ros_init(void) {
-  stdio_init_all();
-
   if (cyw43_arch_init()) {
-    printf("failed to initialise\n");
     return false;
   }
 
@@ -18,12 +15,8 @@ bool my_micro_ros_init(void) {
 
   sleep_ms(1000);
 
-  printf("Connecting to Wi-Fi...\n");
   if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 20000)) {
-    printf("failed to connect.\n");
     return false;
-  } else {
-    printf("Connected.\n");
   }
 
   static struct micro_ros_agent_locator locator;
@@ -38,8 +31,8 @@ bool my_micro_ros_init(void) {
 #else
 #include "pico_uart_transports.h"
 
-// void my_micro_ros_init(void) {
-//   rmw_uros_set_custom_transport(true, NULL, pico_serial_transport_open, pico_serial_transport_close,
-//                                 pico_serial_transport_write, pico_serial_transport_read);
-// }
+void my_micro_ros_init(void) {
+  rmw_uros_set_custom_transport(true, NULL, pico_serial_transport_open, pico_serial_transport_close,
+                                pico_serial_transport_write, pico_serial_transport_read);
+}
 #endif
