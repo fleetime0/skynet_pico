@@ -28,13 +28,15 @@ set(PICO_BOARD pico2_w CACHE STRING "Board type")
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
 
-# set(FREERTOS_KERNEL_PATH "${CMAKE_SOURCE_DIR}/freertos/FreeRTOS-Kernel")
-# include(cmake/FreeRTOS_Kernel_import.cmake)
+set(FREERTOS_KERNEL_PATH "${CMAKE_SOURCE_DIR}/freertos/FreeRTOS-Kernel")
+include(cmake/FreeRTOS_Kernel_import.cmake)
 
 project(skynet_pico C CXX ASM)
 
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
+
+add_subdirectory(micro_ros)
 
 # Add executable. Default name is the project name, version 0.1
 

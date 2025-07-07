@@ -1,6 +1,5 @@
-#include "pico_wifi_transport.h"
+#include "pico_wifi_transports.h"
 
-#ifndef PICO_CYW43_SUPPORTED
 #include <string.h>
 #include <time.h>
 
@@ -8,11 +7,6 @@
 #include "lwip/udp.h"
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
-
-struct micro_ros_agent_locator {
-  ip_addr_t address;
-  int port;
-};
 
 struct transport_buffer {
   uint8_t *buf;
@@ -93,5 +87,3 @@ size_t pico_wifi_transport_read(struct uxrCustomTransport *transport, uint8_t *b
 
   return (elapsed_time_us < 0) ? 0 : len;
 }
-
-#endif // PICO_CYW43_SUPPORTED
