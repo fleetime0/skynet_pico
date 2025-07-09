@@ -11,9 +11,7 @@ if(PICO_CYW43_SUPPORTED)
     set(transport ${CMAKE_CURRENT_SOURCE_DIR}/transport/pico_wifi_transport.c)
     list(APPEND cyw43_backend
         pico_cyw43_arch_lwip_sys_freertos
-        FreeRTOS-Kernel-Heap4
     )
-    set(cyw43_extend_inc ${CMAKE_SOURCE_DIR}/freertos)
 endif()
 
 add_library(my_micro_ros 
@@ -32,6 +30,7 @@ target_compile_definitions(my_micro_ros PRIVATE NO_SYS=0)
 target_link_libraries(my_micro_ros
     pico_stdlib
     microros
+    FreeRTOS-Kernel-Heap4
     ${cyw43_backend}
 )
 
@@ -41,5 +40,5 @@ PUBLIC
 PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/micro_ros_raspberrypi_pico_sdk/libmicroros/include
     ${CMAKE_CURRENT_SOURCE_DIR}/transport
-    ${cyw43_extend_inc}
+    ${CMAKE_SOURCE_DIR}/freertos
 )

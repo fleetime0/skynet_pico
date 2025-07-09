@@ -8,6 +8,9 @@
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 struct transport_buffer {
   uint8_t *buf;
   bool packet_received;
@@ -15,7 +18,17 @@ struct transport_buffer {
 
 static struct udp_pcb *pcb;
 
-void usleep(uint64_t us) { sleep_us(us); }
+void usleep(uint64_t us) {
+  if (us < 1000) {
+    busy_wait_us(us);
+    return;
+  }
+  TickType_t t = pdMS_TO_TICKS(us / 1000);
+  if (t < 1) {
+    t = 1;
+  }
+  vTaskDelay(t);
+}
 
 int clock_gettime(clockid_t unused, struct timespec *tp) {
   uint64_t m = time_us_64();
@@ -81,7 +94,7 @@ size_t pico_wifi_transport_read(struct uxrCustomTransport *transport, uint8_t *b
 
   while (!transport_buffer.packet_received && elapsed_time_us > 0) {
     udp_recv(pcb, udp_recv_callback, &transport_buffer);
-    sleep_ms(1);
+    vTaskDelay(1);
     elapsed_time_us = timeout * 1000 - (time_us_64() - start_time_us);
   }
 
