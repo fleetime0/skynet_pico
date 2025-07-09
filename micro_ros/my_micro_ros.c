@@ -8,6 +8,7 @@
 #include "rmw_microros/rmw_microros.h"
 
 #include "FreeRTOS.h"
+#include "task.h"
 
 static void *freertos_allocate(size_t size, void *state) { return (void *) pvPortMalloc(size); }
 
@@ -49,8 +50,9 @@ bool my_micro_ros_init(void) {
   }
 
   cyw43_arch_enable_sta_mode();
+  cyw43_wifi_pm(&cyw43_state, CYW43_NONE_PM);
 
-  sleep_ms(1000);
+  vTaskDelay(pdMS_TO_TICKS(1000));
 
   printf("Connecting to Wi-Fi...\n");
   if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 20000)) {
