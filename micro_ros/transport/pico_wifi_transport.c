@@ -1,12 +1,11 @@
 #include "pico_wifi_transports.h"
 
+#include <stdio.h>
 #include <string.h>
 #include <time.h>
 
 #include "lwip/pbuf.h"
 #include "lwip/udp.h"
-#include "pico/cyw43_arch.h"
-#include "pico/stdlib.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -68,7 +67,7 @@ size_t pico_wifi_transport_write(struct uxrCustomTransport *transport, const uin
   pbuf_free(p);
 
   if (er != ERR_OK) {
-    printf("Writing error");
+    printf("Writing error\n");
     return 0;
   }
 
@@ -100,3 +99,4 @@ size_t pico_wifi_transport_read(struct uxrCustomTransport *transport, uint8_t *b
 
   return (elapsed_time_us < 0) ? 0 : len;
 }
+ 

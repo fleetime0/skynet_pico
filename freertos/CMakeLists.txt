@@ -4,7 +4,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/FreeRTOS_Kernel_import.cmake)
 add_library(my_freertos INTERFACE)
 
 target_compile_definitions(my_freertos INTERFACE 
-    configNUMBER_OF_CORES=2
+    configNUMBER_OF_CORES=1
 )
 
 target_link_libraries(my_freertos INTERFACE

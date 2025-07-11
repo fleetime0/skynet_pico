@@ -2,11 +2,8 @@
 #define MICRO_ROS_PICO_WIFI_H
 
 #include <stdint.h>
-#include <stdio.h>
 
-#include "lwip/pbuf.h"
-#include "lwip/udp.h"
-#include "pico/cyw43_arch.h"
+#include "lwip/ip_addr.h"
 #include "pico/stdlib.h"
 
 #include "uxr/client/profile/transport/custom/custom_transport.h"
