@@ -14,5 +14,9 @@ int main() {
   sleep_ms(2);
   printf("Hello skynet!\n");
 
-  app_start_freertos();
+  // app_start_freertos();
+  while (true) {
+    printf("-------- %.2f\n", bsp_adc_get_battery_volotage());
+    sleep_ms(100);
+  }
 }

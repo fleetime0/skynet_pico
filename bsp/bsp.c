@@ -7,4 +7,5 @@ void bsp_init(void) {
   bsp_led_init();
   bsp_beep_init();
   bsp_key_init();
+  bsp_adc_init();
 }

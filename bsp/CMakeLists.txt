@@ -3,7 +3,7 @@ add_library(bsp
     bsp_led.c
     bsp_beep.c
     bsp_key.c
-    # bsp_adc.c
+    bsp_adc.c
 )
 
 target_link_libraries(bsp
