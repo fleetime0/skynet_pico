@@ -1,5 +1,7 @@
 #include "bsp.h"
 
+#include <stdio.h>
+
 void bsp_init(void) {
   printf("Firmware Version: V%d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
   printf("Firmware Compiled: %s, %s\n", __DATE__, __TIME__);
