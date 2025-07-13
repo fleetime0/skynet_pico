@@ -9,7 +9,7 @@ add_library(bsp
 target_link_libraries(bsp
     pico_stdlib
     hardware_adc
-    cyw43_lwip
+    # cyw43_lwip
 )
 
 target_include_directories(bsp PUBLIC

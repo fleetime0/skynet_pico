@@ -2,21 +2,22 @@
 
 #include "pico/stdlib.h"
 
-#include "app.h"
+// #include "app.h"
 #include "bsp.h"
 
 int main() {
   stdio_init_all();
 
   bsp_init();
-  app_init();
+  // app_init();
 
   sleep_ms(2);
   printf("Hello skynet!\n");
 
   // app_start_freertos();
   while (true) {
-    printf("-------- %.2f\n", bsp_adc_get_battery_volotage());
+    // printf("-------- %.2f\n", bsp_adc_get_battery_volotage());
+    printf("Hello World!\n");
     sleep_ms(100);
   }
 }
