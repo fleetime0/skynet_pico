@@ -8,6 +8,7 @@ target_link_libraries(app
     cyw43_lwip
     my_micro_ros
     bsp
+    icm45686
 )
 
 target_include_directories(app PUBLIC

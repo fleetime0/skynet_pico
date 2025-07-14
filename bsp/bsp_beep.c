@@ -17,6 +17,12 @@ void bsp_beep_init(void) {
   gpio_set_dir(SKYNET_BEEP_PIN, GPIO_OUT);
 }
 
+void bsp_long_beep_alarm(void) {
+  BEEP_ON();
+  sleep_ms(1000);
+  BEEP_OFF();
+}
+
 void bsp_beep_on_time(uint16_t time) {
   if (time == BEEP_STATE_ON_ALWAYS) {
     beep_set_state(BEEP_STATE_ON_ALWAYS);

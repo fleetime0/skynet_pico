@@ -4,7 +4,7 @@
 
 #include "pico/stdlib.h"
 
-uint16_t g_key_long_press = 0;
+static uint16_t g_key_long_press = 0;
 
 static uint8_t key_is_press(void) {
   if (!gpio_get(SKYNET_KEY_PIN)) {

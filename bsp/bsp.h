@@ -1,11 +1,6 @@
 #ifndef SKYNET_BSP_H
 #define SKYNET_BSP_H
 
-#include "bsp_adc.h"
-#include "bsp_beep.h"
-#include "bsp_key.h"
-#include "bsp_led.h"
-
 #define WIFI_SSID "OpenWrt"
 #define WIFI_PASSWORD "zxc147258369"
 

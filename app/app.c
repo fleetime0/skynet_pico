@@ -15,7 +15,9 @@
 #include "rmw_microros/rmw_microros.h"
 #include "std_msgs/msg/int32.h"
 
-#include "bsp.h"
+#include "bsp_beep.h"
+#include "bsp_key.h"
+#include "icm45686.h"
 #include "my_micro_ros.h"
 
 #define MAIN_TASK_PRIORITY (tskIDLE_PRIORITY + 1UL)
@@ -64,7 +66,8 @@ static void skynet_node_task(__unused void *params) {
   rclc_support_init(&support, 0, NULL, &allocator);
 
   rclc_node_init_default(&node, NODE_NAME, "", &support);
-  rclc_publisher_init_default(&publisher, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32), "pico_publisher");
+  // rclc_publisher_init_default(&publisher, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
+  // "pico_publisher");
 
   // rclc_timer_init_default2(&timer, &support, RCL_MS_TO_NS(50), timer_callback, true);
 
@@ -121,7 +124,19 @@ static void main_task(__unused void *params) {
   vTaskDelete(NULL);
 }
 
-void app_init(void) {}
+void app_init(void) {
+  int result = icm45686_init();
+  if (result != 0) {
+    printf("ICM45686 initialization failed: %d\n", result);
+    // bsp_long_beep_alarm();
+    while (true)
+      ;
+  }
+
+  start_accel(100, 4);
+  start_gyro(100, 1000);
+  sleep_ms(100);
+}
 
 void app_start_freertos(void) {
   TaskHandle_t task;

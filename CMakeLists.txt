@@ -33,11 +33,12 @@ project(skynet_pico C CXX ASM)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
-# add_subdirectory(freertos)
-# add_subdirectory(cyw43_lwip)
-# add_subdirectory(micro_ros)
+add_subdirectory(freertos)
+add_subdirectory(cyw43_lwip)
+add_subdirectory(micro_ros)
 add_subdirectory(bsp)
-# add_subdirectory(app)
+add_subdirectory(icm45686)
+add_subdirectory(app)
 
 # Add executable. Default name is the project name, version 0.1
 
@@ -71,7 +72,8 @@ target_include_directories(skynet_pico PRIVATE
 # Add any user requested libraries
 target_link_libraries(skynet_pico 
     bsp
-    # app
+    app
+    icm45686
 )
 
 pico_add_extra_outputs(skynet_pico)
