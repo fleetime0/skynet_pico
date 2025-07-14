@@ -1,5 +1,8 @@
 #include "icm45686.h"
 
+#include <math.h>
+#include <stdio.h>
+
 #include "pico/stdlib.h"
 
 #include "bsp_icm_i2c.h"
@@ -7,8 +10,12 @@
 #include "imu/inv_imu_driver_advanced.h"
 #include "imu/inv_imu_edmp.h"
 
+#include "MadgwickAHRS.h"
+
 static inv_imu_device_t icm_driver;
 static inv_imu_sensor_data_t inv_imu_data;
+
+static float gyro_bias[3] = {0};
 
 static void us_sleep(uint32_t us) { sleep_us(us); }
 
@@ -191,7 +198,24 @@ int icm45686_init(void) {
 
   sleep_us(3000);
 
-  return inv_imu_adv_init(&icm_driver);
+  rc |= inv_imu_adv_init(&icm_driver);
+  if (rc != 0) {
+    return rc;
+  }
+
+  rc |= start_accel(ICM45686_ODR_HZ, ICM45686_ACCEL_SCALE_G);
+  if (rc != 0) {
+    return rc;
+  }
+
+  rc |= start_gyro(ICM45686_ODR_HZ, ICM45686_GYRO_SCALE_DPS);
+  if (rc != 0) {
+    return rc;
+  }
+
+  sleep_ms(100);
+
+  return rc;
 }
 
 int start_accel(uint16_t odr, uint16_t fsr) {
@@ -210,7 +234,105 @@ int start_gyro(uint16_t odr, uint16_t fsr) {
   return rc;
 }
 
-int get_data_from_reg(imu_data_t *imu_data) {
+int get_raw_data(imu_data_t *imu_data) {
   int ret = inv_imu_get_register_data(&icm_driver, (inv_imu_sensor_data_t *) imu_data);
   return ret;
+}
+
+void get_quaternion(float *q0_out, float *q1_out, float *q2_out, float *q3_out) {
+  inv_imu_get_register_data(&icm_driver, &inv_imu_data);
+  const float accel_scale_mps2 = (float) ICM45686_ACCEL_SCALE_G / 32768.0f * 9.80665f;
+  const float gyro_scale_dps = (float) ICM45686_GYRO_SCALE_DPS / 32768.0f;
+  const float deg2rad = M_PI / 180.0f;
+
+  float ax = inv_imu_data.accel_data[0] * accel_scale_mps2 / 9.80665f;
+  float ay = inv_imu_data.accel_data[1] * accel_scale_mps2 / 9.80665f;
+  float az = inv_imu_data.accel_data[2] * accel_scale_mps2 / 9.80665f;
+
+  float gx = (inv_imu_data.gyro_data[0] - gyro_bias[0]) * gyro_scale_dps * deg2rad;
+  float gy = (inv_imu_data.gyro_data[1] - gyro_bias[1]) * gyro_scale_dps * deg2rad;
+  float gz = (inv_imu_data.gyro_data[2] - gyro_bias[2]) * gyro_scale_dps * deg2rad;
+
+  static absolute_time_t last_time;
+  static bool initialized = false;
+  float dt = 1.0f / ICM45686_ODR_HZ;
+  absolute_time_t now = get_absolute_time();
+  if (initialized)
+    dt = absolute_time_diff_us(last_time, now) / 1e6f;
+  else
+    initialized = true;
+  last_time = now;
+
+  MadgwickAHRSupdateIMU(gx, gy, gz, ax, ay, az);
+
+  *q0_out = q0;
+  *q1_out = q1;
+  *q2_out = q2;
+  *q3_out = q3;
+}
+
+void get_euler_angle(float *roll_deg, float *pitch_deg, float *yaw_deg) {
+  inv_imu_get_register_data(&icm_driver, &inv_imu_data);
+  const float accel_scale_mps2 = (float) ICM45686_ACCEL_SCALE_G / 32768.0f * 9.80665f;
+  const float gyro_scale_dps = (float) ICM45686_GYRO_SCALE_DPS / 32768.0f;
+  const float deg2rad = M_PI / 180.0f;
+
+  float ax = inv_imu_data.accel_data[0] * accel_scale_mps2 / 9.80665f;
+  float ay = inv_imu_data.accel_data[1] * accel_scale_mps2 / 9.80665f;
+  float az = inv_imu_data.accel_data[2] * accel_scale_mps2 / 9.80665f;
+
+  float gx = (inv_imu_data.gyro_data[0] - gyro_bias[0]) * gyro_scale_dps * deg2rad;
+  float gy = (inv_imu_data.gyro_data[1] - gyro_bias[1]) * gyro_scale_dps * deg2rad;
+  float gz = (inv_imu_data.gyro_data[2] - gyro_bias[2]) * gyro_scale_dps * deg2rad;
+
+  static absolute_time_t last_time;
+  static bool initialized = false;
+  float dt = 1.0f / ICM45686_ODR_HZ;
+  absolute_time_t now = get_absolute_time();
+  if (initialized)
+    dt = absolute_time_diff_us(last_time, now) / 1e6f;
+  else
+    initialized = true;
+  last_time = now;
+
+  MadgwickAHRSupdateIMU(gx, gy, gz, ax, ay, az);
+
+  *roll_deg = atan2f(2.0f * (q0 * q1 + q2 * q3), 1.0f - 2.0f * (q1 * q1 + q2 * q2)) * 180.0f / M_PI;
+
+  *pitch_deg = asinf(2.0f * (q0 * q2 - q3 * q1)) * 180.0f / M_PI;
+
+  *yaw_deg = atan2f(2.0f * (q0 * q3 + q1 * q2), 1.0f - 2.0f * (q2 * q2 + q3 * q3)) * 180.0f / M_PI;
+}
+
+void icm45686_calibrate_gyro_bias(void) {
+  int32_t sum[3] = {0};
+  imu_data_t imu_data;
+
+  printf("Calibrating gyro bias...\n");
+
+  for (int i = 0; i < ICM45686_CALIB_SAMPLES; i++) {
+    get_raw_data(&imu_data);
+    sum[0] += imu_data.gyro_data[0];
+    sum[1] += imu_data.gyro_data[1];
+    sum[2] += imu_data.gyro_data[2];
+    sleep_ms(ICM45686_CALIB_WAIT_MS);
+  }
+
+  gyro_bias[0] = sum[0] / (float) ICM45686_CALIB_SAMPLES;
+  gyro_bias[1] = sum[1] / (float) ICM45686_CALIB_SAMPLES;
+  gyro_bias[2] = sum[2] / (float) ICM45686_CALIB_SAMPLES;
+
+  printf("Gyro bias: %.2f, %.2f, %.2f\n", gyro_bias[0], gyro_bias[1], gyro_bias[2]);
+}
+
+void icm45686_get_gyro_bias(float bias_out[3]) {
+  bias_out[0] = gyro_bias[0];
+  bias_out[1] = gyro_bias[1];
+  bias_out[2] = gyro_bias[2];
+}
+
+void icm45686_set_gyro_bias(const float bias[3]) {
+  gyro_bias[0] = bias[0];
+  gyro_bias[1] = bias[1];
+  gyro_bias[2] = bias[2];
 }

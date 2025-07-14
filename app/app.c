@@ -132,10 +132,6 @@ void app_init(void) {
     while (true)
       ;
   }
-
-  start_accel(100, 4);
-  start_gyro(100, 1000);
-  sleep_ms(100);
 }
 
 void app_start_freertos(void) {
