@@ -81,10 +81,10 @@ static void skynet_node_task(__unused void *params) {
   }
 }
 
-static void app_loop(void) { bsp_beep_timeout_close_handle(); }
+static void app_loop(void) { beep_timeout_close_handle(); }
 
 static void app_task(__unused void *params) {
-  bsp_beep_on_time(100);
+  beep_on_time(100);
   while (true) {
     vTaskDelay(10);
     app_loop();
@@ -93,8 +93,8 @@ static void app_task(__unused void *params) {
 
 static void key_task(__unused void *params) {
   while (true) {
-    if (bsp_key_state(KEY_MODE_ONE_TIME)) {
-      bsp_beep_on_time(50);
+    if (key_state(KEY_MODE_ONE_TIME)) {
+      beep_on_time(50);
       printf("KEY1 PRESS\n");
     }
     vTaskDelay(10);

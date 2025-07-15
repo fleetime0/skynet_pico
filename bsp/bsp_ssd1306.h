@@ -1,0 +1,10 @@
+#ifndef SKYNET_BSP_SSD1306_H
+#define SKYNET_BSP_SSD1306_H
+
+#include "hardware/spi.h"
+
+#define SKYNET_SSD1306_SPI spi0
+#define SKYNET_SSD1306_SPI_TX_PIN 19
+#define SKYNET_SSD1306_SPI_SCK_PIN 18
+
+#endif // SKYNET_BSP_SSD1306_H

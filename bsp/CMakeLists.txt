@@ -5,12 +5,14 @@ add_library(bsp
     bsp_key.c
     bsp_adc.c
     bsp_icm_i2c.c
+    bsp_ssd1306.c
 )
 
 target_link_libraries(bsp
     pico_stdlib
     hardware_adc
     hardware_i2c
+    hardware_spi
     cyw43_lwip
 )
 

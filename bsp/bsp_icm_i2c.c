@@ -12,7 +12,7 @@ void bsp_icm_i2c_init(void) {
   bi_decl(bi_2pins_with_func(SKYNET_ICM_I2C_SDA_PIN, SKYNET_ICM_I2C_SCL_PIN, GPIO_FUNC_I2C));
 }
 
-int bsp_icm_i2c_write(uint8_t reg, const uint8_t *wbuffer, uint32_t wlen) {
+int icm_i2c_write(uint8_t reg, const uint8_t *wbuffer, uint32_t wlen) {
   uint8_t buffer[1 + wlen];
   buffer[0] = reg;
   for (uint32_t i = 0; i < wlen; ++i) {
@@ -23,7 +23,7 @@ int bsp_icm_i2c_write(uint8_t reg, const uint8_t *wbuffer, uint32_t wlen) {
   return (ret == (int) (wlen + 1)) ? 0 : -1;
 }
 
-int bsp_icm_i2c_read(uint8_t reg, uint8_t *rbuffer, uint32_t rlen) {
+int icm_i2c_read(uint8_t reg, uint8_t *rbuffer, uint32_t rlen) {
   int ret = i2c_write_blocking(SKYNET_ICM_I2C, SKYNET_ICM_I2C_ADDR, &reg, 1, true);
   if (ret != 1)
     return -1;

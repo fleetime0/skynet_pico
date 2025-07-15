@@ -13,8 +13,8 @@
 #define BEEP_STATE_ON_DELAY 2
 
 void bsp_beep_init(void);
-void bsp_long_beep_alarm(void);
-void bsp_beep_on_time(uint16_t time);
-void bsp_beep_timeout_close_handle(void);
+void long_beep_alarm(void);
+void beep_on_time(uint16_t time);
+void beep_timeout_close_handle(void);
 
 #endif // SKYNET_BSP_BEEP_H

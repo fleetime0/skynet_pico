@@ -192,8 +192,8 @@ int icm45686_init(void) {
   uint8_t who_am_i;
 
   icm_driver.transport.serif_type = UI_I2C;
-  icm_driver.transport.read_reg = bsp_icm_i2c_read;
-  icm_driver.transport.write_reg = bsp_icm_i2c_write;
+  icm_driver.transport.read_reg = icm_i2c_read;
+  icm_driver.transport.write_reg = icm_i2c_write;
   icm_driver.transport.sleep_us = us_sleep;
 
   sleep_us(3000);

@@ -19,7 +19,7 @@ void bsp_key_init(void) {
   gpio_pull_up(SKYNET_KEY_PIN);
 }
 
-uint8_t bsp_key_long_press(uint16_t timeout) {
+uint8_t key_long_press(uint16_t timeout) {
   if (g_key_long_press > 0) {
     if (g_key_long_press < timeout * 100 + 2) {
       g_key_long_press++;
@@ -33,7 +33,7 @@ uint8_t bsp_key_long_press(uint16_t timeout) {
   return 0;
 }
 
-uint8_t bsp_key_state(uint8_t mode) {
+uint8_t key_state(uint8_t mode) {
   static uint16_t key1_state = 0;
 
   if (key_is_press() == KEY_PRESS) {
