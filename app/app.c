@@ -15,6 +15,7 @@
 #include "rmw_microros/rmw_microros.h"
 #include "std_msgs/msg/int32.h"
 
+#include "app_oled.h"
 #include "bsp_beep.h"
 #include "bsp_key.h"
 #include "icm45686.h"

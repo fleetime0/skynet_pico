@@ -48,6 +48,15 @@
 
 static uint8_t ssd1306_buffer[SCREEN_WIDTH * ((SCREEN_HEIGHT + 7) / 8)];
 
+typedef struct {
+  uint16_t current_x;
+  uint16_t current_y;
+  uint8_t inverted;
+  uint8_t initialized;
+} SSD1306_t;
+
+static SSD1306_t ssd1306;
+
 static inline void spi_write(uint8_t d) { spi_write_blocking(SKYNET_SSD1306_SPI, &d, 1); }
 
 static void ssd1306_command1(uint8_t c) {
@@ -134,6 +143,11 @@ void bsp_ssd1306_init(void) {
                                   SSD1306_DEACTIVATE_SCROLL,
                                   SSD1306_DISPLAYON}; // Main screen turn on
   ssd1306_commandList(init5, sizeof(init5));
+
+  ssd1306.current_x = 0;
+  ssd1306.current_y = 0;
+
+  ssd1306.initialized = 1;
 }
 
 void ssd1306_update_screen(void) {
@@ -155,6 +169,72 @@ void ssd1306_update_screen(void) {
   spi_write_blocking(SKYNET_SSD1306_SPI, ssd1306_buffer, SCREEN_WIDTH * ((SCREEN_HEIGHT + 7) / 8));
 }
 
-void ssd1306_fill(ssd1306_COLOR_t color) {
+void ssd1306_fill(SSD1306_COLOR_t color) {
   memset(ssd1306_buffer, (color == SSD1306_COLOR_BLACK) ? 0x00 : 0xff, SCREEN_WIDTH * ((SCREEN_HEIGHT + 7) / 8));
+}
+
+void ssd1306_draw_pixel(uint16_t x, uint16_t y, SSD1306_COLOR_t color) {
+  if (x >= SCREEN_WIDTH || y >= SCREEN_HEIGHT) {
+    return; // 出错，超出范围
+  }
+
+  /* 检查像素是否倒置 */
+  if (ssd1306.inverted) {
+    color = (SSD1306_COLOR_t) !color;
+  }
+
+  /* 设置颜色 */
+  if (color == SSD1306_COLOR_WHITE) {
+    ssd1306_buffer[x + (y / 8) * SCREEN_WIDTH] |= 1 << (y % 8);
+  } else {
+    ssd1306_buffer[x + (y / 8) * SCREEN_WIDTH] &= ~(1 << (y % 8));
+  }
+}
+
+void ssd1306_gotoxy(uint16_t x, uint16_t y) {
+  ssd1306.current_x = x;
+  ssd1306.current_y = y;
+}
+
+char ssd1306_putc(char ch, FontDef_t *Font, SSD1306_COLOR_t color) {
+  uint32_t i, b, j;
+
+  if (SCREEN_WIDTH <= (ssd1306.current_x + Font->FontWidth) ||
+      SCREEN_HEIGHT <= (ssd1306.current_y + Font->FontHeight)) {
+    return 0; // 出错，超出范围
+  }
+
+  for (i = 0; i < Font->FontHeight; i++) {
+    b = Font->data[(ch - 32) * Font->FontHeight + i];
+    for (j = 0; j < Font->FontWidth; j++) {
+      if ((b << j) & 0x8000) {
+        ssd1306_draw_pixel(ssd1306.current_x + j, (ssd1306.current_y + i), (SSD1306_COLOR_t) color);
+      } else {
+        ssd1306_draw_pixel(ssd1306.current_x + j, (ssd1306.current_y + i), (SSD1306_COLOR_t) !color);
+      }
+    }
+  }
+
+  /* Increase pointer */
+  ssd1306.current_x += Font->FontWidth;
+
+  /* Return character written */
+  return ch;
+}
+
+char ssd1306_puts(char *str, FontDef_t *Font, SSD1306_COLOR_t color) {
+  /* Write characters */
+  while (*str) {
+    /* Write character by character */
+    if (ssd1306_putc(*str, Font, color) != *str) {
+      /* Return error */
+      return *str;
+    }
+
+    /* Increase string pointer */
+    str++;
+  }
+
+  /* Everything OK, zero should be returned */
+  return *str;
 }

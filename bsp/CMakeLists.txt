@@ -6,6 +6,7 @@ add_library(bsp
     bsp_adc.c
     bsp_icm_i2c.c
     bsp_ssd1306.c
+    oled_fonts.c
 )
 
 target_link_libraries(bsp

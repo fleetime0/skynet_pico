@@ -9,6 +9,8 @@
 #include "bsp_led.h"
 #include "bsp_ssd1306.h"
 
+extern void oled_show_waiting(void);
+
 void bsp_init(void) {
   printf("Firmware Version: V%d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
   printf("Firmware Compiled: %s, %s\n", __DATE__, __TIME__);
@@ -22,6 +24,7 @@ void bsp_init(void) {
   BEEP_OFF();
 
   bsp_ssd1306_init();
+  oled_show_waiting();
 
   bsp_icm_i2c_init();
 }
