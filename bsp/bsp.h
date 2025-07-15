@@ -1,5 +1,5 @@
-#ifndef SKYNET_BSP_H
-#define SKYNET_BSP_H
+#ifndef BSP_H
+#define BSP_H
 
 #define WIFI_SSID "OpenWrt"
 #define WIFI_PASSWORD "zxc147258369"
@@ -10,4 +10,4 @@
 
 void bsp_init(void);
 
-#endif // SKYNET_BSP_H
+#endif // BSP_H

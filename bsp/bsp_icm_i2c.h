@@ -1,5 +1,5 @@
-#ifndef BSP_ICM_I2C_H
-#define BSP_ICM_I2C_H
+#ifndef ICM_I2C_H
+#define ICM_I2C_H
 
 #include <stdint.h>
 
@@ -15,4 +15,4 @@ void bsp_icm_i2c_init(void);
 int icm_i2c_write(uint8_t reg, const uint8_t *wbuffer, uint32_t wlen);
 int icm_i2c_read(uint8_t reg, uint8_t *rbuffer, uint32_t rlen);
 
-#endif // BSP_ICM_I2C_H
+#endif // ICM_I2C_H

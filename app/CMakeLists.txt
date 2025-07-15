@@ -1,5 +1,6 @@
 add_library(app 
     app.c
+    app_oled.c
 )
 
 target_link_libraries(app

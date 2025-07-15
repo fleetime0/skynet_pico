@@ -1,5 +1,5 @@
-#ifndef SKYNET_APP_H
-#define SKYNET_APP_H
+#ifndef APP_H
+#define APP_H
 
 #define WIFI_SSID "OpenWrt"
 #define WIFI_PASSWORD "zxc147258369"
@@ -12,4 +12,4 @@ void app_init(void);
 
 void app_start_freertos(void);
 
-#endif // SKYNET_APP_H
+#endif // APP_H

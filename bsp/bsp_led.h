@@ -1,5 +1,5 @@
-#ifndef SKYNET_BSP_LED_H
-#define SKYNET_BSP_LED_H
+#ifndef BSP_LED_H
+#define BSP_LED_H
 
 #include "pico/stdlib.h"
 
@@ -19,4 +19,4 @@
 
 void bsp_led_init(void);
 
-#endif // SKYNET_BSP_LED_H
+#endif // BSP_LED_H

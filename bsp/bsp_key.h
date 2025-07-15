@@ -1,5 +1,5 @@
-#ifndef SKYNET_BSP_KEY_H
-#define SKYNET_BSP_KEY_H
+#ifndef BSP_KEY_H
+#define BSP_KEY_H
 
 #include <stdint.h>
 
@@ -15,4 +15,4 @@ void bsp_key_init(void);
 uint8_t key_state(uint8_t mode);
 uint8_t key_long_press(uint16_t timeout);
 
-#endif // SKYNET_BSP_KEY_H
+#endif // BSP_KEY_H

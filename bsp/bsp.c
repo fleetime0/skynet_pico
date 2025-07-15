@@ -7,6 +7,7 @@
 #include "bsp_icm_i2c.h"
 #include "bsp_key.h"
 #include "bsp_led.h"
+#include "bsp_ssd1306.h"
 
 void bsp_init(void) {
   printf("Firmware Version: V%d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
@@ -16,5 +17,11 @@ void bsp_init(void) {
   bsp_beep_init();
   bsp_key_init();
   bsp_adc_init();
+
+  sleep_ms(50);
+  BEEP_OFF();
+
+  bsp_ssd1306_init();
+
   bsp_icm_i2c_init();
 }

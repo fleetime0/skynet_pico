@@ -5,7 +5,9 @@
 
 #include "app.h"
 #include "bsp.h"
-#include "icm45686.h"
+
+// #include "icm45686.h"
+#include "bsp_ssd1306.h"
 
 // === 主函数 ===
 int main() {
@@ -13,19 +15,24 @@ int main() {
   bsp_init();
   app_init();
 
-  icm45686_calibrate_gyro_bias();
+  // icm45686_calibrate_gyro_bias();
 
-  int cnt = 0;
-  float roll, pitch, yaw;
-  while (true) {
-    get_euler_angle(&roll, &pitch, &yaw);
+  // int cnt = 0;
+  // float roll, pitch, yaw;
+  // while (true) {
+  //   get_euler_angle(&roll, &pitch, &yaw);
 
-    if (cnt == 9) {
-      printf("Euler Angle: R=%.2f P=%.2f Y=%.2f\n", roll, pitch, yaw);
-      cnt = 0;
-    } else {
-      cnt++;
-    }
-    sleep_ms(10);
-  }
+  //   if (cnt == 9) {
+  //     printf("Euler Angle: R=%.2f P=%.2f Y=%.2f\n", roll, pitch, yaw);
+  //     cnt = 0;
+  //   } else {
+  //     cnt++;
+  //   }
+  //   sleep_ms(10);
+  // }
+
+  ssd1306_fill(SSD1306_COLOR_WHITE);
+  ssd1306_update_screen();
+  while (true)
+    ;
 }

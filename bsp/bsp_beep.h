@@ -1,5 +1,5 @@
-#ifndef SKYNET_BSP_BEEP_H
-#define SKYNET_BSP_BEEP_H
+#ifndef BSP_BEEP_H
+#define BSP_BEEP_H
 
 #include "pico/stdlib.h"
 
@@ -17,4 +17,4 @@ void long_beep_alarm(void);
 void beep_on_time(uint16_t time);
 void beep_timeout_close_handle(void);
 
-#endif // SKYNET_BSP_BEEP_H
+#endif // BSP_BEEP_H

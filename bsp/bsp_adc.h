@@ -1,5 +1,5 @@
-#ifndef SKYNET_BSP_ADC_H
-#define SKYNET_BSP_ADC_H
+#ifndef BSP_ADC_H
+#define BSP_ADC_H
 
 #include <stdint.h>
 
@@ -12,4 +12,4 @@ float adc_get_battery_volotage(void);
 
 uint16_t adc_get_average(uint8_t times);
 
-#endif // SKYNET_BSP_ADC_H
+#endif // BSP_ADC_H
