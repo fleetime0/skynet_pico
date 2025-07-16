@@ -18,5 +18,8 @@
 #endif
 
 void bsp_led_init(void);
+void bsp_led_show_state(void);
+void bsp_led_show_low_battery(uint8_t enable_beep);
+void bsp_led_show_overvoltage_battery(uint8_t enable_beep);
 
 #endif // BSP_LED_H

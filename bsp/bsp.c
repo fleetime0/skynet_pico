@@ -4,9 +4,11 @@
 
 #include "bsp_adc.h"
 #include "bsp_beep.h"
+#include "bsp_encoder.h"
 #include "bsp_icm_i2c.h"
 #include "bsp_key.h"
 #include "bsp_led.h"
+#include "bsp_motor.h"
 #include "bsp_ssd1306.h"
 
 extern void oled_show_waiting(void);
@@ -27,4 +29,8 @@ void bsp_init(void) {
   oled_show_waiting();
 
   bsp_icm_i2c_init();
+
+  bsp_motor_init(MOTOR_MAX_PULSE, MOTOR_FREQ_DIVIDE);
+
+  bsp_encoder_init();
 }

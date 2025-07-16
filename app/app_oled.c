@@ -3,6 +3,8 @@
 #include <stdio.h>
 
 #include "bsp.h"
+#include "bsp_beep.h"
+#include "bsp_led.h"
 #include "bsp_ssd1306.h"
 
 void oled_clear(void) { ssd1306_fill(SSD1306_COLOR_BLACK); }
@@ -32,5 +34,18 @@ void oled_show_waiting(void) {
   oled_draw_line(text, 2, true, false);
 
   sprintf(text, "Please Waiting..");
+  oled_draw_line(text, 3, false, true);
+}
+
+void oled_show_error(void) {
+  LED_OFF();
+  BEEP_OFF();
+  char text[20];
+
+  sprintf(text, "Version:V%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+
+  oled_draw_line(text, 2, true, false);
+
+  sprintf(text, "IMU ERROR!!!");
   oled_draw_line(text, 3, false, true);
 }

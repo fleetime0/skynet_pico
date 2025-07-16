@@ -1,6 +1,9 @@
 add_library(app 
     app.c
     app_oled.c
+    app_motion.c
+    app_pid.c
+    app_bat.c
 )
 
 target_link_libraries(app

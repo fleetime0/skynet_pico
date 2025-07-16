@@ -73,7 +73,6 @@ target_include_directories(skynet_pico PRIVATE
 target_link_libraries(skynet_pico 
     bsp
     app
-    icm45686
 )
 
 pico_add_extra_outputs(skynet_pico)
