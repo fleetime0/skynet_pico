@@ -2,6 +2,8 @@
 
 #include <stdio.h>
 
+#include "pico/cyw43_arch.h"
+
 #include "bsp_adc.h"
 #include "bsp_beep.h"
 #include "bsp_encoder.h"
@@ -14,6 +16,8 @@
 extern void oled_show_waiting(void);
 
 void bsp_init(void) {
+  cyw43_arch_init();
+
   printf("Firmware Version: V%d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
   printf("Firmware Compiled: %s, %s\n", __DATE__, __TIME__);
 

@@ -26,5 +26,6 @@ void pid_param_init(void);
 void pid_calc_motor(motor_data_t *motor);
 void pid_set_motor_target(uint8_t motor_id, float target);
 void pid_clear_motor(uint8_t motor_id);
+void pid_set_motor_parm(uint8_t motor_id, float kp, float ki, float kd);
 
 #endif // APP_PID_H

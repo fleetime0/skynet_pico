@@ -324,15 +324,3 @@ void icm45686_calibrate_gyro_bias(void) {
 
   printf("Gyro bias: %.2f, %.2f, %.2f\n", gyro_bias[0], gyro_bias[1], gyro_bias[2]);
 }
-
-void icm45686_get_gyro_bias(float bias_out[3]) {
-  bias_out[0] = gyro_bias[0];
-  bias_out[1] = gyro_bias[1];
-  bias_out[2] = gyro_bias[2];
-}
-
-void icm45686_set_gyro_bias(const float bias[3]) {
-  gyro_bias[0] = bias[0];
-  gyro_bias[1] = bias[1];
-  gyro_bias[2] = bias[2];
-}

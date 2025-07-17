@@ -75,3 +75,22 @@ void pid_set_motor_target(uint8_t motor_id, float target) {
     pid_motor[motor_id].target_val = target;
   }
 }
+
+void pid_set_motor_parm(uint8_t motor_id, float kp, float ki, float kd) {
+  if (motor_id > MAX_MOTOR)
+    return;
+
+  if (motor_id == MAX_MOTOR) {
+    for (int i = 0; i < MAX_MOTOR; i++) {
+      pid_motor[i].Kp = kp;
+      pid_motor[i].Ki = ki;
+      pid_motor[i].Kd = kd;
+    }
+    // DEBUG("PID Set:%.3f, %.3f, %.3f\n", kp, ki, kd);
+  } else {
+    pid_motor[motor_id].Kp = kp;
+    pid_motor[motor_id].Ki = ki;
+    pid_motor[motor_id].Kd = kd;
+    // DEBUG("PID Set M%d:%.3f, %.3f, %.3f\n", motor_id + 1, kp, ki, kd);
+  }
+}

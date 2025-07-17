@@ -4,12 +4,12 @@ add_library(app
     app_motion.c
     app_pid.c
     app_bat.c
+    app_flash.c
 )
 
 target_link_libraries(app
     pico_stdlib
     my_freertos
-    cyw43_lwip
     my_micro_ros
     bsp
     icm45686

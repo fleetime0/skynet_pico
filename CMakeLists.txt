@@ -34,7 +34,6 @@ project(skynet_pico C CXX ASM)
 pico_sdk_init()
 
 add_subdirectory(freertos)
-add_subdirectory(cyw43_lwip)
 add_subdirectory(micro_ros)
 add_subdirectory(bsp)
 add_subdirectory(icm45686)
@@ -49,14 +48,7 @@ pico_set_program_version(skynet_pico "0.1")
 
 # Modify the below lines to enable/disable output over UART/USB
 
-add_compile_definitions(
-    PICO_STDIO_UART=1
-    PICO_DEFAULT_UART=1
-    PICO_DEFAULT_UART_TX_PIN=4
-    PICO_DEFAULT_UART_RX_PIN=5
-)
-
-pico_enable_stdio_uart(skynet_pico 1)
+pico_enable_stdio_uart(skynet_pico 0)
 pico_enable_stdio_usb(skynet_pico 1)
 
 # Add the standard library to the build

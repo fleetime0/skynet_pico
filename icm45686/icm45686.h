@@ -25,7 +25,5 @@ void get_quaternion(float *q0_out, float *q1_out, float *q2_out, float *q3_out);
 void get_euler_angle(float *roll_deg, float *pitch_deg, float *yaw_deg);
 
 void icm45686_calibrate_gyro_bias(void);
-void icm45686_get_gyro_bias(float bias_out[3]);
-void icm45686_set_gyro_bias(const float bias[3]);
 
 #endif // ICM45686_H

@@ -5,6 +5,6 @@
 
 #include "pico/stdlib.h"
 
-bool my_micro_ros_init(char *agent_ip, uint32_t port);
+bool my_micro_ros_init();
 
 #endif // MY_MICRO_ROS_H

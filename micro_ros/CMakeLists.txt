@@ -5,15 +5,12 @@ set_target_properties(microros PROPERTIES
 
 add_library(my_micro_ros 
     my_micro_ros.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/transport/pico_wifi_transport.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/transport/pico_uart_transport.c
 )
 
 target_link_libraries(my_micro_ros
     pico_stdlib
-    my_freertos
-    cyw43_lwip
     microros
-
 )
 
 target_include_directories(my_micro_ros 

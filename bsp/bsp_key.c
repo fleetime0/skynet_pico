@@ -24,7 +24,7 @@ uint8_t key_long_press(uint16_t timeout) {
     if (g_key_long_press < timeout * 100 + 2) {
       g_key_long_press++;
       if (g_key_long_press == timeout * 100 + 2) {
-        printf("key long press\n");
+        // DEBUG("key long press\n");
         return 1;
       }
       return 0;
