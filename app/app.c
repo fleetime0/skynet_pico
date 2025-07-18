@@ -8,15 +8,6 @@
 #include "semphr.h"
 #include "task.h"
 
-#include "geometry_msgs/msg/twist.h"
-#include "rcl/error_handling.h"
-#include "rcl/rcl.h"
-#include "rclc/executor.h"
-#include "rclc/rclc.h"
-#include "rmw_microros/rmw_microros.h"
-#include "std_msgs/msg/bool.h"
-#include "std_msgs/msg/int32.h"
-
 #include "app_bat.h"
 #include "app_flash.h"
 #include "app_motion.h"
@@ -27,7 +18,7 @@
 #include "bsp_encoder.h"
 #include "bsp_key.h"
 #include "icm45686.h"
-#include "my_micro_ros.h"
+#include "skynet_node.h"
 
 #define CORE(n) (1U << (n))
 
@@ -76,10 +67,12 @@ static void speed_task(__unused void *params) {
   }
 }
 
+static void skynet_node_task(__unused void *params) { skynet_node_run(); }
+
 static void app_loop(void) { beep_timeout_close_handle(); }
 
 static void app_task(__unused void *params) {
-  // beep_on_time(100);
+  beep_on_time(100);
   while (true) {
     vTaskDelay(10);
     if (bat_show_led_handle(g_enable_beep))
@@ -92,9 +85,7 @@ static void key_task(__unused void *params) {
     if (key_state(KEY_MODE_ONE_TIME)) {
       beep_on_time(50);
       // DEBUG("KEY1 PRESS\n");
-      if (system_enable()) {
-
-      } else {
+      if (!system_enable()) {
         g_enable_beep = 0;
         BEEP_OFF();
       }
@@ -216,8 +207,8 @@ void app_init(void) {
 void app_start_freertos(void) {
   xTaskCreate(speed_task, "SpeedTaskThread", SPEED_TASK_STACK_SIZE, NULL, SPEED_TASK_PRIORITY, &speed_task_handle);
   printf("start SpeedTaskThread\n");
-  // xTaskCreate(skynet_node_task, "SkynetNodeThread", SKYNET_NODE_STACK_SIZE, NULL, SKYNET_NODE_TASK_PRIORITY,
-  //             &skynet_task_handle);
+  xTaskCreate(skynet_node_task, "SkynetNodeThread", SKYNET_NODE_STACK_SIZE, NULL, SKYNET_NODE_TASK_PRIORITY,
+              &skynet_task_handle);
   xTaskCreate(key_task, "KeyTaskThread", KEY_TASK_STACK_SIZE, NULL, KEY_TASK_PRIORITY, &key_task_handle);
   printf("start KeyTaskThread\n");
   xTaskCreate(app_task, "AppTaskThread", APP_TASK_STACK_SIZE, NULL, APP_TASK_PRIORITY, &app_task_handle);
@@ -233,7 +224,7 @@ void app_start_freertos(void) {
   vTaskCoreAffinitySet(app_task_handle, CORE(0));
   vTaskCoreAffinitySet(imu_task_handle, CORE(0));
   vTaskCoreAffinitySet(oled_task_handle, CORE(0));
-  // vTaskCoreAffinitySet(skynet_task_handle, CORE(1));
+  vTaskCoreAffinitySet(skynet_task_handle, CORE(1));
 #endif
 
   printf("start vTaskStartScheduler\n");

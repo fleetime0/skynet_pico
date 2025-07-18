@@ -5,6 +5,7 @@ add_library(app
     app_pid.c
     app_bat.c
     app_flash.c
+    skynet_node.c
 )
 
 target_link_libraries(app

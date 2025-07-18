@@ -1,6 +1,9 @@
 #ifndef SKYNET_NODE_H
 #define SKYNET_NODE_H
 
+#define NODE_NAME "skynet_robot"
+
+void skynet_node_run(void);
 //   // ROS 单位：m/s 和 rad/s
 //   float vx_f = msg->linear.x;    // m/s
 //   float vy_f = msg->linear.y;    // m/s （可忽略）
@@ -87,12 +90,14 @@
 //     rclc_support_init(&support, 0, NULL, &allocator);
 //     rclc_node_init_default(&node, NODE_NAME, "", &support);
 
-//     rclc_subscription_init_default(&cmd_vel_subscriber, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
+//     rclc_subscription_init_default(&cmd_vel_subscriber, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg,
+//     Twist),
 //                                    "cmd_vel");
 //     rclc_subscription_init_default(&buzzer_subscriber, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Bool),
 //                                    "buzzer");
-//     rclc_publisher_init_default(&publisher, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32), "pico_publisher");
-//     rclc_publisher_init_default(&vel_raw_subscriber, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
+//     rclc_publisher_init_default(&publisher, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
+//     "pico_publisher"); rclc_publisher_init_default(&vel_raw_subscriber, &node,
+//     ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
 //                                 "vel_raw");
 
 //     rclc_timer_init_default2(&timer, &support, RCL_MS_TO_NS(100), timer_callback, true);
