@@ -13,7 +13,7 @@
 #include "std_msgs/msg/bool.h"
 
 #include "app_motion.h"
-
+#include "bsp_beep.h"
 #include "my_micro_ros.h"
 
 static rcl_node_t node;
@@ -22,11 +22,16 @@ static rclc_support_t support;
 static rcl_timer_t timer;
 static rclc_executor_t executor;
 
+static rcl_subscription_t buzzer_subscriber;
+static std_msgs__msg__Bool buzzer_msg;
+
 static rcl_subscription_t cmd_vel_subscriber;
 static geometry_msgs__msg__Twist cmd_vel_msg;
 
 static rcl_publisher_t vel_raw_publisher;
 static geometry_msgs__msg__Twist vel_raw_msg;
+
+// static rcl_publisher_t voltage
 
 static car_data_t car_speed;
 
@@ -57,6 +62,11 @@ static void cmd_vel_callback(const void *msgin) {
   motion_ctrl(vx, vy, vz);
 }
 
+static void buzzer_callback(const void *msgin) {
+  const std_msgs__msg__Bool *msg = (const std_msgs__msg__Bool *) msgin;
+  beep_on_time((uint16_t) (msg->data));
+}
+
 void skynet_node_run(void) {
   while (true) {
     if (!my_micro_ros_init()) {
@@ -82,18 +92,20 @@ void skynet_node_run(void) {
 
     rclc_subscription_init_default(&cmd_vel_subscriber, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
                                    "cmd_vel");
+    rclc_subscription_init_default(&buzzer_subscriber, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Bool),
+                                   "buzzer");
 
     rclc_publisher_init_default(&vel_raw_publisher, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
                                 "vel_raw");
 
     rclc_timer_init_default2(&timer, &support, RCL_MS_TO_NS(100), timer_callback, true);
 
-    rclc_executor_init(&executor, &support.context, 2, &allocator);
+    rclc_executor_init(&executor, &support.context, 3, &allocator);
     rclc_executor_add_subscription(&executor, &cmd_vel_subscriber, &cmd_vel_msg, &cmd_vel_callback, ON_NEW_DATA);
+    rclc_executor_add_subscription(&executor, &buzzer_subscriber, &buzzer_msg, &buzzer_callback, ON_NEW_DATA);
     rclc_executor_add_timer(&executor, &timer);
 
     geometry_msgs__msg__Twist__init(&vel_raw_msg);
-
     while (true) {
       rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
     }
