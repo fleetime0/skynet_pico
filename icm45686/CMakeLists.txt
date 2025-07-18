@@ -10,6 +10,7 @@ set(imu_sources
 add_library(icm45686
     ${imu_sources}
     ${CMAKE_CURRENT_SOURCE_DIR}/icm45686.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/inv_time.c
     ${CMAKE_CURRENT_SOURCE_DIR}/MadgwickAHRS.c
 )
 

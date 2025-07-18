@@ -17,6 +17,7 @@
 #include "std_msgs/msg/int32.h"
 
 #include "app_bat.h"
+#include "app_flash.h"
 #include "app_motion.h"
 #include "app_oled.h"
 #include "app_pid.h"
@@ -69,7 +70,7 @@ static void speed_task(__unused void *params) {
 static void app_loop(void) { beep_timeout_close_handle(); }
 
 static void app_task(__unused void *params) {
-  // beep_on_time(100);
+  beep_on_time(100);
   while (true) {
     vTaskDelay(10);
     if (bat_show_led_handle(g_enable_beep))
@@ -123,26 +124,32 @@ static void imu_task(__unused void *params) {
 
 void app_init(void) {
   pid_param_init();
+  flash_init();
 
-  // printf("Start ICM45686 Init\n");
+  // DEBUG("Start ICM45686 Init\n");
   int result = icm45686_init();
   if (result != 0) {
-    // printf("ICM_INIT ERROR:%d\n", result);
+    printf("ICM_INIT ERROR:%d\n", result);
     oled_show_error();
     long_beep_alarm();
     while (true)
       ;
   }
-  // printf("ICM_INIT OK\n");
+  icm45686_calibrate_gyro_bias();
+  // DEBUG("ICM_INIT OK\n");
 }
 
 void app_start_freertos(void) {
   xTaskCreate(speed_task, "SpeedTaskThread", SPEED_TASK_STACK_SIZE, NULL, SPEED_TASK_PRIORITY, &speed_task_handle);
+  printf("start SpeedTaskThread\n");
   // xTaskCreate(skynet_node_task, "SkynetNodeThread", SKYNET_NODE_STACK_SIZE, NULL, SKYNET_NODE_TASK_PRIORITY,
   //             &skynet_task_handle);
   xTaskCreate(key_task, "KeyTaskThread", KEY_TASK_STACK_SIZE, NULL, KEY_TASK_PRIORITY, &key_task_handle);
+  printf("start KeyTaskThread\n");
   xTaskCreate(app_task, "AppTaskThread", APP_TASK_STACK_SIZE, NULL, APP_TASK_PRIORITY, &app_task_handle);
+  printf("start AppTaskThread\n");
   xTaskCreate(imu_task, "ImuTaskThread", IMU_TASK_STACK_SIZE, NULL, IMU_TASK_PRIORITY, &imu_task_handle);
+  printf("start ImuTaskThread\n");
   // xTaskCreate();
 
 #if configUSE_CORE_AFFINITY && configNUMBER_OF_CORES > 1

@@ -308,7 +308,7 @@ void icm45686_calibrate_gyro_bias(void) {
   int32_t sum[3] = {0};
   imu_data_t imu_data;
 
-  printf("Calibrating gyro bias...\n");
+  // DEBUG("Calibrating gyro bias...\n");
 
   for (int i = 0; i < ICM45686_CALIB_SAMPLES; i++) {
     get_raw_data(&imu_data);
@@ -322,5 +322,5 @@ void icm45686_calibrate_gyro_bias(void) {
   gyro_bias[1] = sum[1] / (float) ICM45686_CALIB_SAMPLES;
   gyro_bias[2] = sum[2] / (float) ICM45686_CALIB_SAMPLES;
 
-  printf("Gyro bias: %.2f, %.2f, %.2f\n", gyro_bias[0], gyro_bias[1], gyro_bias[2]);
+  // DEBUG("Gyro bias: %.2f, %.2f, %.2f\n", gyro_bias[0], gyro_bias[1], gyro_bias[2]);
 }

@@ -16,7 +16,6 @@ pico_generate_pio_header(bsp ${CMAKE_CURRENT_LIST_DIR}/quadrature_encoder.pio)
 
 target_link_libraries(bsp
     pico_stdlib
-    pico_cyw43_arch_none
     hardware_adc
     hardware_i2c
     hardware_spi
@@ -25,6 +24,10 @@ target_link_libraries(bsp
     hardware_flash
     hardware_sync
 )
+
+if (PICO_CYW43_SUPPORTED)
+    target_link_libraries(bsp pico_cyw43_arch_none)
+endif()
 
 target_include_directories(bsp PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}

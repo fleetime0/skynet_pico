@@ -2,7 +2,10 @@
 
 #include <stdio.h>
 
+#include "hardware/watchdog.h"
+#ifdef CYW43_WL_GPIO_LED_PIN
 #include "pico/cyw43_arch.h"
+#endif
 
 #include "bsp_adc.h"
 #include "bsp_beep.h"
@@ -16,7 +19,9 @@
 extern void oled_show_waiting(void);
 
 void bsp_init(void) {
+#ifdef CYW43_WL_GPIO_LED_PIN
   cyw43_arch_init();
+#endif
 
   printf("Firmware Version: V%d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
   printf("Firmware Compiled: %s, %s\n", __DATE__, __TIME__);

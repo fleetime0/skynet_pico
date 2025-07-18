@@ -5,12 +5,17 @@
 #include "bsp_adc.h"
 #include "bsp_led.h"
 
+#include "FreeRTOS.h"
+#include "semphr.h"
+
 #define BAT_CHECK_COUNT 20
 
 static uint8_t g_system_enable = 1;
 static uint8_t g_bat_state = 1;
-static int voltage_z10 = 0;
 static int voltage_unusual_count = 0;
+
+static int voltage_z10 = 0;
+SemaphoreHandle_t voltage_mutex;
 
 static uint8_t bat_check_voltage(int voltage) {
 
@@ -38,7 +43,9 @@ uint8_t bat_get_over_voltage(void) { return 130; }
 
 uint8_t bat_state(void) {
   if (g_bat_state == BATTERY_NORMAL) {
+    xSemaphoreTake(voltage_mutex, portMAX_DELAY);
     voltage_z10 = (int) (adc_get_battery_volotage() * 10);
+    xSemaphoreGive(voltage_mutex);
     g_bat_state = bat_check_voltage(voltage_z10);
     if (g_bat_state != BATTERY_NORMAL) {
       g_system_enable = 0;
@@ -47,7 +54,13 @@ uint8_t bat_state(void) {
   return g_bat_state;
 }
 
-int bat_voltage_z10(void) { return voltage_z10; }
+int bat_voltage_z10(void) {
+  int val;
+  xSemaphoreTake(voltage_mutex, portMAX_DELAY);
+  val = voltage_z10;
+  xSemaphoreGive(voltage_mutex);
+  return val;
+}
 
 uint8_t system_enable(void) { return g_system_enable; }
 
