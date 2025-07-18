@@ -7,4 +7,6 @@
 
 void bsp_init(void);
 
+void bsp_reset_mcu(void);
+
 #endif // BSP_H

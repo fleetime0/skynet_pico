@@ -1,6 +1,22 @@
 #ifndef SKYNET_NODE_H
 #define SKYNET_NODE_H
 
+//   // ROS 单位：m/s 和 rad/s
+//   float vx_f = msg->linear.x;    // m/s
+//   float vy_f = msg->linear.y;    // m/s （可忽略）
+//   float wz_f = msg->angular.z;   // rad/s
+
+//   // 转为整数速度，单位一致
+//   int16_t vx = (int16_t)(vx_f * 1000.0f);     // m/s → mm/s 确实需要乘上1000
+//   int16_t vy = 0;                             // 忽略横向速度
+//   int16_t wz = (int16_t)(wz_f * 1000.0f);     // rad/s → 1000-scale
+
+//   // 可选：限幅（保护机制）
+//   if (vx > 1000) vx = 1000;
+//   if (vx < -1000) vx = -1000;
+//   if (wz > 3000) wz = 3000;      // 约 3rad/s
+//   if (wz < -3000) wz = -3000;
+
 // static rcl_node_t node;
 // static rcl_allocator_t allocator;
 // static rclc_support_t support;

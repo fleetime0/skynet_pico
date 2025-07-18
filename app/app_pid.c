@@ -2,9 +2,13 @@
 
 #include "bsp_motor.h"
 
+#include "FreeRTOS.h"
+#include "semphr.h"
+
 #define PI 3.1415926f
 
 static Pid_t pid_motor[2];
+static SemaphoreHandle_t pid_motor_mutex;
 
 static float pid_incre_calc(Pid_t *pid, float actual_val) {
   pid->err = pid->target_val - actual_val;
@@ -23,6 +27,8 @@ static float pid_incre_calc(Pid_t *pid, float actual_val) {
 }
 
 void pid_param_init(void) {
+  pid_motor_mutex = xSemaphoreCreateMutex();
+
   for (int i = 0; i < MAX_MOTOR; i++) {
     pid_motor[i].target_val = 0.0;
     pid_motor[i].pwm_output = 0.0;
@@ -36,18 +42,19 @@ void pid_param_init(void) {
   }
 }
 
-void pid_calc_motor(motor_data_t *motor) {
-  int i;
-
-  for (i = 0; i < MAX_MOTOR; i++) {
-    motor->speed_pwm[i] = pid_incre_calc(&pid_motor[i], motor->speed_mm_s[i]);
-  }
+float pid_calc_motor(uint8_t motor_id, float speed_mm_s) {
+  float val;
+  xSemaphoreTake(pid_motor_mutex, portMAX_DELAY);
+  val = pid_incre_calc(&pid_motor[motor_id], speed_mm_s);
+  xSemaphoreGive(pid_motor_mutex);
+  return val;
 }
 
 void pid_clear_motor(uint8_t motor_id) {
   if (motor_id > MAX_MOTOR)
     return;
 
+  xSemaphoreTake(pid_motor_mutex, portMAX_DELAY);
   if (motor_id == MAX_MOTOR) {
     for (int i = 0; i < MAX_MOTOR; i++) {
       pid_motor[i].pwm_output = 0.0;
@@ -61,12 +68,14 @@ void pid_clear_motor(uint8_t motor_id) {
     pid_motor[motor_id].err_last = 0.0;
     pid_motor[motor_id].err_next = 0.0;
   }
+  xSemaphoreGive(pid_motor_mutex);
 }
 
 void pid_set_motor_target(uint8_t motor_id, float target) {
   if (motor_id > MAX_MOTOR)
     return;
 
+  xSemaphoreTake(pid_motor_mutex, portMAX_DELAY);
   if (motor_id == MAX_MOTOR) {
     for (int i = 0; i < MAX_MOTOR; i++) {
       pid_motor[i].target_val = target;
@@ -74,12 +83,14 @@ void pid_set_motor_target(uint8_t motor_id, float target) {
   } else {
     pid_motor[motor_id].target_val = target;
   }
+  xSemaphoreGive(pid_motor_mutex);
 }
 
 void pid_set_motor_parm(uint8_t motor_id, float kp, float ki, float kd) {
   if (motor_id > MAX_MOTOR)
     return;
 
+  xSemaphoreTake(pid_motor_mutex, portMAX_DELAY);
   if (motor_id == MAX_MOTOR) {
     for (int i = 0; i < MAX_MOTOR; i++) {
       pid_motor[i].Kp = kp;
@@ -93,4 +104,5 @@ void pid_set_motor_parm(uint8_t motor_id, float kp, float ki, float kd) {
     pid_motor[motor_id].Kd = kd;
     // DEBUG("PID Set M%d:%.3f, %.3f, %.3f\n", motor_id + 1, kp, ki, kd);
   }
+  xSemaphoreGive(pid_motor_mutex);
 }

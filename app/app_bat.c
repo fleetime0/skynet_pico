@@ -15,7 +15,7 @@ static uint8_t g_bat_state = 1;
 static int voltage_unusual_count = 0;
 
 static int voltage_z10 = 0;
-SemaphoreHandle_t voltage_mutex;
+static SemaphoreHandle_t voltage_mutex;
 
 static uint8_t bat_check_voltage(int voltage) {
 
@@ -40,6 +40,8 @@ static uint8_t bat_check_voltage(int voltage) {
 uint8_t bat_get_low_voltage(void) { return 96; }
 
 uint8_t bat_get_over_voltage(void) { return 130; }
+
+void app_bat_init(void) { voltage_mutex = xSemaphoreCreateMutex(); }
 
 uint8_t bat_state(void) {
   if (g_bat_state == BATTERY_NORMAL) {

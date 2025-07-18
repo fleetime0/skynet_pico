@@ -43,3 +43,8 @@ void bsp_init(void) {
 
   bsp_encoder_init();
 }
+
+void bsp_reset_mcu(void) {
+  printf("Reset MCU\n");
+  watchdog_reboot(0, 0, 0);
+}

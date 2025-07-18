@@ -26,6 +26,38 @@ void oled_draw_line(char *data, uint8_t line, bool clear, bool refresh) {
   }
 }
 
+void oled_show_cartype(uint8_t v_major, uint8_t v_minor, uint8_t v_patch) {
+  char text[20];
+  oled_draw_line("SKYNET_CAR", 1, true, false);
+  sprintf(text, "Version:V%d.%d.%d", v_major, v_minor, v_patch);
+  oled_draw_line(text, 2, false, false);
+  sprintf(text, "%s  %s", __DATE__, __TIME__);
+  oled_draw_line(text, 3, false, true);
+}
+
+void oled_show_voltage(uint16_t bat_voltage) {
+  char text[20];
+  sprintf(text, "Voltage:%.1fV", bat_voltage / 10.0);
+  oled_draw_line(text, 2, true, true);
+}
+
+void oled_show_imu(float yaw, float roll, float pitch) {
+  char text[20];
+  sprintf(text, "YAW:%.2f", yaw);
+  oled_draw_line(text, 1, true, false);
+  sprintf(text, "ROLL:%.2f", roll);
+  oled_draw_line(text, 2, false, false);
+  sprintf(text, "PITCH:%.2f", pitch);
+  oled_draw_line(text, 3, false, true);
+}
+
+void oled_show_motor_speed(float m1, float m2) {
+  char text[20];
+
+  sprintf(text, "M1:%d, M2:%d", (int) (m1 / 10), (int) (m2 / 10));
+  oled_draw_line(text, 2, true, true);
+}
+
 void oled_show_waiting(void) {
   char text[20];
 

@@ -23,7 +23,7 @@ typedef struct _motor_data_t {
 } motor_data_t;
 
 void pid_param_init(void);
-void pid_calc_motor(motor_data_t *motor);
+float pid_calc_motor(uint8_t motor_id, float speed_mm_s);
 void pid_set_motor_target(uint8_t motor_id, float target);
 void pid_clear_motor(uint8_t motor_id);
 void pid_set_motor_parm(uint8_t motor_id, float kp, float ki, float kd);

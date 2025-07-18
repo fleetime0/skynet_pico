@@ -4,6 +4,9 @@
 #include "bsp_encoder.h"
 #include "bsp_motor.h"
 
+#include "FreeRTOS.h"
+#include "semphr.h"
+
 static int g_encoder_all_now[MAX_MOTOR] = {0};
 static int g_encoder_all_last[MAX_MOTOR] = {0};
 
@@ -16,8 +19,51 @@ static int speed_r_setup = 0;
 
 static uint8_t g_start_ctrl = 0;
 
-static car_data_t car_data;
 static motor_data_t motor_data;
+static SemaphoreHandle_t motor_data_mutex;
+
+static car_data_t car_data;
+static SemaphoreHandle_t car_data_mutex;
+
+static void motion_update_speed() {
+  int i = 0;
+  float speed_mm[MAX_MOTOR] = {0};
+  float speed_pwm[MAX_MOTOR] = {0};
+
+  motion_get_encoder();
+
+  for (i = 0; i < MAX_MOTOR; i++) {
+    speed_mm[i] = (g_encoder_all_offset[i]) * 100 * WHEEL_PERIMETER / ENCODER_PRECISION;
+  }
+
+  xSemaphoreTake(car_data_mutex, portMAX_DELAY);
+  car_data.vx = (speed_mm[0] + speed_mm[1]) / 2;
+  car_data.vy = 0;
+  car_data.vz = (speed_mm[0] - speed_mm[1]) / WHEEL_SPACE * 1000.0f;
+  xSemaphoreGive(car_data_mutex);
+
+  if (g_start_ctrl) {
+    xSemaphoreTake(motor_data_mutex, portMAX_DELAY);
+    for (i = 0; i < MAX_MOTOR; i++) {
+      motor_data.speed_mm_s[i] = speed_mm[i];
+    }
+    xSemaphoreGive(motor_data_mutex);
+
+    for (i = 0; i < MAX_MOTOR; i++) {
+      speed_pwm[i] = pid_calc_motor(i, motor_data.speed_mm_s[i]);
+    }
+    xSemaphoreTake(motor_data_mutex, portMAX_DELAY);
+    for (i = 0; i < MAX_MOTOR; i++) {
+      motor_data.speed_pwm[i] = speed_pwm[i];
+    }
+    xSemaphoreGive(motor_data_mutex);
+  }
+}
+
+void motion_init(void) {
+  motor_data_mutex = xSemaphoreCreateMutex();
+  car_data_mutex = xSemaphoreCreateMutex();
+}
 
 void motion_stop(uint8_t brake) {
   motion_set_speed(0, 0);
@@ -34,21 +80,6 @@ void motion_set_pwm(int16_t motor_1, int16_t motor_2) {
     motor_set_pwm(MOTOR_ID_M2, motor_2);
   }
 }
-//   // ROS 单位：m/s 和 rad/s
-//   float vx_f = msg->linear.x;    // m/s
-//   float vy_f = msg->linear.y;    // m/s （可忽略）
-//   float wz_f = msg->angular.z;   // rad/s
-
-//   // 转为整数速度，单位一致
-//   int16_t vx = (int16_t)(vx_f * 1000.0f);     // m/s → mm/s 确实需要乘上1000
-//   int16_t vy = 0;                             // 忽略横向速度
-//   int16_t wz = (int16_t)(wz_f * 1000.0f);     // rad/s → 1000-scale
-
-//   // 可选：限幅（保护机制）
-//   if (vx > 1000) vx = 1000;
-//   if (vx < -1000) vx = -1000;
-//   if (wz > 3000) wz = 3000;      // 约 3rad/s
-//   if (wz < -3000) wz = -3000;
 
 void motion_ctrl(int16_t v_x, int16_t v_y, int16_t v_z) {
   float robot_APB = WHEEL_SPACE / 2;
@@ -84,52 +115,35 @@ void motion_get_encoder(void) {
   }
 }
 
-//   geometry_msgs__msg__Twist twist_msg;
-
-//   twist_msg.linear.x  = car->vx / 1000.0f;   // mm/s → m/s
-//   twist_msg.linear.y  = car->vy / 1000.0f;
-//   twist_msg.linear.z  = 0;
-
-//   twist_msg.angular.x = 0;
-//   twist_msg.angular.y = 0;
-//   twist_msg.angular.z = car->vz / 1000.0f;            // 已是 rad/s，直接用
-
-//   rcl_publish(&twist_publisher, &twist_msg, NULL);
-
 void motion_get_speed(car_data_t *car) {
-  int i = 0;
-  float speed_mm[MAX_MOTOR] = {0};
-
-  motion_get_encoder();
-
-  for (i = 0; i < MAX_MOTOR; i++) {
-    speed_mm[i] = (g_encoder_all_offset[i]) * 100 * WHEEL_PERIMETER / ENCODER_PRECISION;
-  }
-
-  car->vx = (speed_mm[0] + speed_mm[1]) / 2;
-  car->vy = 0;
-  car->vz = (speed_mm[0] - speed_mm[1]) / WHEEL_SPACE * 1000.0f;
-
-  if (g_start_ctrl) {
-    for (i = 0; i < MAX_MOTOR; i++) {
-      motor_data.speed_mm_s[i] = speed_mm[i];
-    }
-
-    pid_calc_motor(&motor_data);
-  }
+  xSemaphoreTake(car_data_mutex, portMAX_DELAY);
+  car->vx = car_data.vx;
+  car->vy = car_data.vy;
+  car->vz = car_data.vz;
+  xSemaphoreGive(car_data_mutex);
 }
 
 void motion_set_speed(int16_t speed_m1, int16_t speed_m2) {
   g_start_ctrl = 1;
+  xSemaphoreTake(motor_data_mutex, portMAX_DELAY);
   motor_data.speed_set[0] = speed_m1;
   motor_data.speed_set[1] = speed_m2;
+  xSemaphoreGive(motor_data_mutex);
   for (uint8_t i = 0; i < MAX_MOTOR; i++) {
     pid_set_motor_target(i, motor_data.speed_set[i] * 1.0);
   }
 }
 
+void motion_get_motor_speed(float *speed) {
+  xSemaphoreTake(motor_data_mutex, portMAX_DELAY);
+  for (int i = 0; i < MAX_MOTOR; i++) {
+    speed[i] = motor_data.speed_mm_s[i];
+  }
+  xSemaphoreGive(motor_data_mutex);
+}
+
 void motion_handle(void) {
-  motion_get_speed(&car_data);
+  motion_update_speed();
 
   if (g_start_ctrl) {
     motion_set_pwm(motor_data.speed_pwm[0], motor_data.speed_pwm[1]);
