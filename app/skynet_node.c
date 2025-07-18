@@ -11,7 +11,9 @@
 #include "rclc/rclc.h"
 #include "rmw_microros/rmw_microros.h"
 #include "std_msgs/msg/bool.h"
+#include "std_msgs/msg/float32.h"
 
+#include "app_bat.h"
 #include "app_motion.h"
 #include "bsp_beep.h"
 #include "my_micro_ros.h"
@@ -31,7 +33,8 @@ static geometry_msgs__msg__Twist cmd_vel_msg;
 static rcl_publisher_t vel_raw_publisher;
 static geometry_msgs__msg__Twist vel_raw_msg;
 
-// static rcl_publisher_t voltage
+static rcl_publisher_t voltage_publisher;
+static std_msgs__msg__Float32 voltage_msg;
 
 static car_data_t car_speed;
 
@@ -45,7 +48,12 @@ static void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
   vel_raw_msg.angular.y = 0;
   vel_raw_msg.angular.z = car_speed.vz / 1000.0f;
 
+  voltage_msg.data = Bat_Voltage_Z10() / 10.0f;
+
+  
+
   rcl_ret_t ret = rcl_publish(&vel_raw_publisher, &vel_raw_msg, NULL);
+  ret = rcl_publish(&voltage_publisher, &voltage_publisher, NULL);
 }
 
 static void cmd_vel_callback(const void *msgin) {
@@ -106,6 +114,7 @@ void skynet_node_run(void) {
     rclc_executor_add_timer(&executor, &timer);
 
     geometry_msgs__msg__Twist__init(&vel_raw_msg);
+    voltage_msg.data = 0.0f;
     while (true) {
       rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
     }

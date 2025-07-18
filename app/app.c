@@ -46,7 +46,7 @@ static TaskHandle_t oled_task_handle = NULL;
 static uint8_t g_enable_beep = 1;
 static uint32_t g_oled_count = 0;
 
-uint8_t g_oled_flag = OLED_FLAG_MOTOR_SPEED;
+uint8_t g_oled_flag = OLED_MAX_FLAG;
 SemaphoreHandle_t oled_flag_mutex;
 
 imu_norm_data_t norm_data;
