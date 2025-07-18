@@ -239,20 +239,25 @@ int get_raw_data(imu_data_t *imu_data) {
   return ret;
 }
 
-void get_quaternion(float *q0_out, float *q1_out, float *q2_out, float *q3_out) {
-  inv_imu_get_register_data(&icm_driver, &inv_imu_data);
+imu_norm_data_t normalize_imu_data(const imu_data_t *raw) {
   const float accel_scale_mps2 = (float) ICM45686_ACCEL_SCALE_G / 32768.0f * 9.80665f;
   const float gyro_scale_dps = (float) ICM45686_GYRO_SCALE_DPS / 32768.0f;
   const float deg2rad = M_PI / 180.0f;
 
-  float ax = inv_imu_data.accel_data[0] * accel_scale_mps2 / 9.80665f;
-  float ay = inv_imu_data.accel_data[1] * accel_scale_mps2 / 9.80665f;
-  float az = inv_imu_data.accel_data[2] * accel_scale_mps2 / 9.80665f;
+  imu_norm_data_t n;
 
-  float gx = (inv_imu_data.gyro_data[0] - gyro_bias[0]) * gyro_scale_dps * deg2rad;
-  float gy = (inv_imu_data.gyro_data[1] - gyro_bias[1]) * gyro_scale_dps * deg2rad;
-  float gz = (inv_imu_data.gyro_data[2] - gyro_bias[2]) * gyro_scale_dps * deg2rad;
+  n.ax = raw->accel_data[0] * accel_scale_mps2 / 9.80665f;
+  n.ay = raw->accel_data[1] * accel_scale_mps2 / 9.80665f;
+  n.az = raw->accel_data[2] * accel_scale_mps2 / 9.80665f;
 
+  n.gx = (raw->gyro_data[0] - gyro_bias[0]) * gyro_scale_dps * deg2rad;
+  n.gy = (raw->gyro_data[1] - gyro_bias[1]) * gyro_scale_dps * deg2rad;
+  n.gz = (raw->gyro_data[2] - gyro_bias[2]) * gyro_scale_dps * deg2rad;
+
+  return n;
+}
+
+void update_attitude(imu_norm_data_t *norm_data) {
   static absolute_time_t last_time;
   static bool initialized = false;
   float dt = 1.0f / ICM45686_ODR_HZ;
@@ -263,8 +268,10 @@ void get_quaternion(float *q0_out, float *q1_out, float *q2_out, float *q3_out) 
     initialized = true;
   last_time = now;
 
-  MadgwickAHRSupdateIMU(gx, gy, gz, ax, ay, az);
+  MadgwickAHRSupdateIMU(norm_data->gx, norm_data->gy, norm_data->gz, norm_data->ax, norm_data->ay, norm_data->az);
+}
 
+void get_quaternion(float *q0_out, float *q1_out, float *q2_out, float *q3_out) {
   *q0_out = q0;
   *q1_out = q1;
   *q2_out = q2;
@@ -272,31 +279,6 @@ void get_quaternion(float *q0_out, float *q1_out, float *q2_out, float *q3_out) 
 }
 
 void get_euler_angle(float *roll_deg, float *pitch_deg, float *yaw_deg) {
-  inv_imu_get_register_data(&icm_driver, &inv_imu_data);
-  const float accel_scale_mps2 = (float) ICM45686_ACCEL_SCALE_G / 32768.0f * 9.80665f;
-  const float gyro_scale_dps = (float) ICM45686_GYRO_SCALE_DPS / 32768.0f;
-  const float deg2rad = M_PI / 180.0f;
-
-  float ax = inv_imu_data.accel_data[0] * accel_scale_mps2 / 9.80665f;
-  float ay = inv_imu_data.accel_data[1] * accel_scale_mps2 / 9.80665f;
-  float az = inv_imu_data.accel_data[2] * accel_scale_mps2 / 9.80665f;
-
-  float gx = (inv_imu_data.gyro_data[0] - gyro_bias[0]) * gyro_scale_dps * deg2rad;
-  float gy = (inv_imu_data.gyro_data[1] - gyro_bias[1]) * gyro_scale_dps * deg2rad;
-  float gz = (inv_imu_data.gyro_data[2] - gyro_bias[2]) * gyro_scale_dps * deg2rad;
-
-  static absolute_time_t last_time;
-  static bool initialized = false;
-  float dt = 1.0f / ICM45686_ODR_HZ;
-  absolute_time_t now = get_absolute_time();
-  if (initialized)
-    dt = absolute_time_diff_us(last_time, now) / 1e6f;
-  else
-    initialized = true;
-  last_time = now;
-
-  MadgwickAHRSupdateIMU(gx, gy, gz, ax, ay, az);
-
   *roll_deg = atan2f(2.0f * (q0 * q1 + q2 * q3), 1.0f - 2.0f * (q1 * q1 + q2 * q2)) * 180.0f / M_PI;
 
   *pitch_deg = asinf(2.0f * (q0 * q2 - q3 * q1)) * 180.0f / M_PI;

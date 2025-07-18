@@ -16,11 +16,17 @@ typedef struct {
   int16_t temp_data;
 } imu_data_t;
 
+typedef struct {
+  float ax, ay, az;
+  float gx, gy, gz;
+} imu_norm_data_t;
+
 int icm45686_init(void);
 int start_accel(uint16_t odr, uint16_t fsr);
 int start_gyro(uint16_t odr, uint16_t fsr);
 int get_raw_data(imu_data_t *imu_data);
-
+imu_norm_data_t normalize_imu_data(const imu_data_t *raw);
+void update_attitude(imu_norm_data_t *norm_data);
 void get_quaternion(float *q0_out, float *q1_out, float *q2_out, float *q3_out);
 void get_euler_angle(float *roll_deg, float *pitch_deg, float *yaw_deg);
 
