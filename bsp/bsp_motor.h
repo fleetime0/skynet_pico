@@ -12,7 +12,7 @@
 #define M2_IN1_PIN 12
 #define M2_IN2_PIN 13
 
-#define MOTOR_MAX_PULSE 15000
+#define MOTOR_MAX_PULSE 25000
 #define MOTOR_FREQ_DIVIDE 1
 
 // MOTOR: M1 M2

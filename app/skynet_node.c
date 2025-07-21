@@ -1,9 +1,12 @@
 #include "skynet_node.h"
 
+#include <time.h>
+
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "task.h"
 
+#include <sensor_msgs/msg/imu.h>
 #include "geometry_msgs/msg/twist.h"
 #include "rcl/error_handling.h"
 #include "rcl/rcl.h"
@@ -16,6 +19,7 @@
 #include "app_bat.h"
 #include "app_motion.h"
 #include "bsp_beep.h"
+#include "icm45686.h"
 #include "my_micro_ros.h"
 
 static rcl_node_t node;
@@ -36,7 +40,15 @@ static geometry_msgs__msg__Twist vel_raw_msg;
 static rcl_publisher_t voltage_publisher;
 static std_msgs__msg__Float32 voltage_msg;
 
+static rcl_publisher_t imu_publisher;
+static sensor_msgs__msg__Imu imu_msg;
+
 static car_data_t car_speed;
+
+extern imu_norm_data_t norm_data;
+extern SemaphoreHandle_t norm_data_mutex;
+
+extern int clock_gettime(clockid_t unused, struct timespec *tp);
 
 static void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
   motion_get_speed(&car_speed);
@@ -48,10 +60,26 @@ static void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
   vel_raw_msg.angular.y = 0;
   vel_raw_msg.angular.z = car_speed.vz / 1000.0f;
 
-  voltage_msg.data = Bat_Voltage_Z10() / 10.0f;
+  voltage_msg.data = bat_voltage_z10() / 10.0f;
+
+  struct timespec tv = {0};
+  static uint32_t count = 0;
+  clock_gettime(0, &tv);
+  xSemaphoreTake(norm_data_mutex, portMAX_DELAY);
+  imu_msg.header.stamp.nanosec = tv.tv_nsec;
+  imu_msg.header.stamp.sec = tv.tv_sec;
+  imu_msg.linear_acceleration.x = norm_data.ax;
+  imu_msg.linear_acceleration.y = norm_data.ay;
+  imu_msg.linear_acceleration.z = norm_data.az;
+  imu_msg.angular_velocity.x = norm_data.gx;
+  imu_msg.angular_velocity.y = norm_data.gy;
+  imu_msg.angular_velocity.z = norm_data.gz;
+  imu_msg.orientation_covariance[0] = -1.0f;
+  xSemaphoreGive(norm_data_mutex);
 
   rcl_ret_t ret = rcl_publish(&vel_raw_publisher, &vel_raw_msg, NULL);
-  ret = rcl_publish(&voltage_publisher, &voltage_publisher, NULL);
+  ret = rcl_publish(&voltage_publisher, &voltage_msg, NULL);
+  ret = rcl_publish(&imu_publisher, &imu_msg, NULL);
 }
 
 static void cmd_vel_callback(const void *msgin) {
@@ -103,6 +131,10 @@ void skynet_node_run(void) {
 
     rclc_publisher_init_default(&vel_raw_publisher, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
                                 "vel_raw");
+    rclc_publisher_init_default(&voltage_publisher, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32),
+                                "voltage");
+    rclc_publisher_init_default(&imu_publisher, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
+                                "imu/data_raw");
 
     rclc_timer_init_default2(&timer, &support, RCL_MS_TO_NS(100), timer_callback, true);
 
@@ -112,6 +144,7 @@ void skynet_node_run(void) {
     rclc_executor_add_timer(&executor, &timer);
 
     geometry_msgs__msg__Twist__init(&vel_raw_msg);
+    sensor_msgs__msg__Imu__init(&imu_msg);
     voltage_msg.data = 0.0f;
     while (true) {
       rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
