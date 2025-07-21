@@ -50,8 +50,6 @@ static void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
 
   voltage_msg.data = Bat_Voltage_Z10() / 10.0f;
 
-  
-
   rcl_ret_t ret = rcl_publish(&vel_raw_publisher, &vel_raw_msg, NULL);
   ret = rcl_publish(&voltage_publisher, &voltage_publisher, NULL);
 }
