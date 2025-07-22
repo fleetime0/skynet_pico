@@ -55,9 +55,9 @@ SemaphoreHandle_t norm_data_mutex;
 static void speed_task(__unused void *params) {
   uint32_t last_wake_time = xTaskGetTickCount();
   while (system_enable()) {
-    vTaskDelayUntil(&last_wake_time, 10);
     encoder_update_count();
     motion_handle();
+    vTaskDelayUntil(&last_wake_time, 10);
   }
   motion_stop(STOP_FREE);
   vTaskDelay(40);

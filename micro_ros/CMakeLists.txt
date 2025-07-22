@@ -10,7 +10,9 @@ add_library(my_micro_ros
 
 target_link_libraries(my_micro_ros
     pico_stdlib
+    hardware_dma
     microros
+    my_freertos
 )
 
 target_include_directories(my_micro_ros 
