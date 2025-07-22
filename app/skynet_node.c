@@ -6,13 +6,15 @@
 #include "semphr.h"
 #include "task.h"
 
-#include <sensor_msgs/msg/imu.h>
 #include "geometry_msgs/msg/twist.h"
+#include "geometry_msgs/msg/twist_stamped.h"
 #include "rcl/error_handling.h"
 #include "rcl/rcl.h"
 #include "rclc/executor.h"
 #include "rclc/rclc.h"
 #include "rmw_microros/rmw_microros.h"
+#include "rosidl_runtime_c/string_functions.h"
+#include "sensor_msgs/msg/imu.h"
 #include "std_msgs/msg/bool.h"
 #include "std_msgs/msg/float32.h"
 
@@ -35,7 +37,7 @@ static rcl_subscription_t cmd_vel_subscriber;
 static geometry_msgs__msg__Twist cmd_vel_msg;
 
 static rcl_publisher_t vel_raw_publisher;
-static geometry_msgs__msg__Twist vel_raw_msg;
+static geometry_msgs__msg__TwistStamped vel_raw_msg;
 
 static rcl_publisher_t voltage_publisher;
 static std_msgs__msg__Float32 voltage_msg;
@@ -51,35 +53,57 @@ extern SemaphoreHandle_t norm_data_mutex;
 extern int clock_gettime(clockid_t unused, struct timespec *tp);
 
 static void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
-  motion_get_speed(&car_speed);
-  vel_raw_msg.linear.x = car_speed.vx / 1000.f;
-  vel_raw_msg.linear.y = car_speed.vy / 1000.f;
-  vel_raw_msg.linear.z = 0;
-
-  vel_raw_msg.angular.x = 0;
-  vel_raw_msg.angular.y = 0;
-  vel_raw_msg.angular.z = car_speed.vz / 1000.0f;
-
-  voltage_msg.data = bat_voltage_z10() / 10.0f;
-
+  static uint8_t tick = 0;
   struct timespec tv = {0};
-  static uint32_t count = 0;
-  clock_gettime(0, &tv);
-  xSemaphoreTake(norm_data_mutex, portMAX_DELAY);
-  imu_msg.header.stamp.nanosec = tv.tv_nsec;
-  imu_msg.header.stamp.sec = tv.tv_sec;
-  imu_msg.linear_acceleration.x = norm_data.ax;
-  imu_msg.linear_acceleration.y = norm_data.ay;
-  imu_msg.linear_acceleration.z = norm_data.az;
-  imu_msg.angular_velocity.x = norm_data.gx;
-  imu_msg.angular_velocity.y = norm_data.gy;
-  imu_msg.angular_velocity.z = norm_data.gz;
-  imu_msg.orientation_covariance[0] = -1.0f;
-  xSemaphoreGive(norm_data_mutex);
+  switch (tick % 4) {
+    case 0: {
+      clock_gettime(0, &tv);
+      motion_get_speed(&car_speed);
+      vel_raw_msg.header.stamp.sec = tv.tv_sec;
+      vel_raw_msg.header.stamp.nanosec = tv.tv_nsec;
 
-  rcl_ret_t ret = rcl_publish(&vel_raw_publisher, &vel_raw_msg, NULL);
-  ret = rcl_publish(&voltage_publisher, &voltage_msg, NULL);
-  ret = rcl_publish(&imu_publisher, &imu_msg, NULL);
+      vel_raw_msg.twist.linear.x = car_speed.vx / 1000.f;
+      vel_raw_msg.twist.linear.y = car_speed.vy / 1000.f;
+      vel_raw_msg.twist.linear.z = 0;
+
+      vel_raw_msg.twist.angular.x = 0;
+      vel_raw_msg.twist.angular.y = 0;
+      vel_raw_msg.twist.angular.z = car_speed.vz / 1000.0f;
+      rcl_ret_t ret = rcl_publish(&vel_raw_publisher, &vel_raw_msg, NULL);
+      (void) ret;
+      break;
+    }
+    case 1: {
+      voltage_msg.data = bat_voltage_z10() / 10.0f;
+      rcl_ret_t ret = rcl_publish(&voltage_publisher, &voltage_msg, NULL);
+      (void) ret;
+      break;
+    }
+    case 2: {
+      clock_gettime(0, &tv);
+      xSemaphoreTake(norm_data_mutex, portMAX_DELAY);
+      imu_msg.header.stamp.nanosec = tv.tv_nsec;
+      imu_msg.header.stamp.sec = tv.tv_sec;
+      imu_msg.linear_acceleration.x = norm_data.ax;
+      imu_msg.linear_acceleration.y = norm_data.ay;
+      imu_msg.linear_acceleration.z = norm_data.az;
+      imu_msg.angular_velocity.x = norm_data.gx;
+      imu_msg.angular_velocity.y = norm_data.gy;
+      imu_msg.angular_velocity.z = norm_data.gz;
+      imu_msg.orientation_covariance[0] = -1.0f;
+      xSemaphoreGive(norm_data_mutex);
+      rcl_ret_t ret = rcl_publish(&imu_publisher, &imu_msg, NULL);
+      (void) ret;
+      break;
+    }
+    case 3: {
+      break;
+    }
+    default:
+      break;
+  }
+
+  tick = (tick + 1) % 4;
 }
 
 static void cmd_vel_callback(const void *msgin) {
@@ -129,23 +153,25 @@ void skynet_node_run(void) {
     rclc_subscription_init_default(&buzzer_subscriber, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Bool),
                                    "buzzer");
 
-    rclc_publisher_init_default(&vel_raw_publisher, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
-                                "vel_raw");
+    rclc_publisher_init_default(&vel_raw_publisher, &node,
+                                ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, TwistStamped), "vel_raw");
     rclc_publisher_init_default(&voltage_publisher, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32),
                                 "voltage");
     rclc_publisher_init_default(&imu_publisher, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
                                 "imu/data_raw");
 
-    rclc_timer_init_default2(&timer, &support, RCL_MS_TO_NS(100), timer_callback, true);
+    rclc_timer_init_default2(&timer, &support, RCL_MS_TO_NS(25), timer_callback, true);
 
     rclc_executor_init(&executor, &support.context, 3, &allocator);
     rclc_executor_add_subscription(&executor, &cmd_vel_subscriber, &cmd_vel_msg, &cmd_vel_callback, ON_NEW_DATA);
     rclc_executor_add_subscription(&executor, &buzzer_subscriber, &buzzer_msg, &buzzer_callback, ON_NEW_DATA);
     rclc_executor_add_timer(&executor, &timer);
 
-    geometry_msgs__msg__Twist__init(&vel_raw_msg);
+    geometry_msgs__msg__TwistStamped__init(&vel_raw_msg);
     sensor_msgs__msg__Imu__init(&imu_msg);
     voltage_msg.data = 0.0f;
+    rosidl_runtime_c__String__assign(&imu_msg.header.frame_id, "imu_link");
+    rosidl_runtime_c__String__assign(&vel_raw_msg.header.frame_id, "base_link");
     while (true) {
       rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1));
       taskYIELD();
