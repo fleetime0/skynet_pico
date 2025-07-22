@@ -1,9 +1,6 @@
 [submodule "freertos/FreeRTOS-Kernel"]
 	path = freertos/FreeRTOS-Kernel
 	url = https://github.com/raspberrypi/FreeRTOS-Kernel.git
-[submodule "micro_ros/micro_ros_raspberrypi_pico_sdk"]
-	path = micro_ros/micro_ros_raspberrypi_pico_sdk
-	url = https://github.com/micro-ROS/micro_ros_raspberrypi_pico_sdk.git
 [submodule "icm45686/motion.mcu.icm45686.driver"]
 	path = icm45686/motion.mcu.icm45686.driver
 	url = https://github.com/tdk-invn-oss/motion.mcu.icm45686.driver.git
