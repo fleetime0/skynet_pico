@@ -21,8 +21,10 @@
 #include "std_msgs/msg/bool.h"
 #include "std_msgs/msg/float32.h"
 #include "std_srvs/srv/set_bool.h"
+#include "std_srvs/srv/trigger.h"
 
 #include "app_bat.h"
+#include "app_flash.h"
 #include "app_motion.h"
 #include "app_pid.h"
 #include "bsp_beep.h"
@@ -50,6 +52,10 @@ static skynet_msgs__srv__GetPID_Response get_pid_res;
 static rcl_service_t set_oled_service;
 static skynet_msgs__srv__SetOled_Request set_oled_req;
 static skynet_msgs__srv__SetOled_Response set_oled_res;
+
+static rcl_service_t save_service;
+static std_srvs__srv__Trigger_Request save_req;
+static std_srvs__srv__Trigger_Response save_res;
 
 static rcl_subscription_t cmd_vel_subscriber;
 static geometry_msgs__msg__Twist cmd_vel_msg;
@@ -164,6 +170,16 @@ void get_pid_callback(const void *request, void *response) {
   pid_get_motor_param(2, &res->kp, &res->ki, &res->kd);
 }
 
+void save_flash_callback(const void *request, void *response) {
+  (void) request;
+  std_srvs__srv__Trigger_Response *res = (std_srvs__srv__Trigger_Response *) response;
+
+  float kp, ki, kd;
+  pid_get_motor_param(2, &kp, &ki, &kd);
+  flash_write_pid(kp, ki, kd);
+  res->success = true;
+}
+
 void set_oled_callback(const void *request, void *response) {
   const skynet_msgs__srv__SetOled_Request *req = (const skynet_msgs__srv__SetOled_Request *) request;
   skynet_msgs__srv__SetOled_Response *res = (skynet_msgs__srv__SetOled_Response *) response;
@@ -209,6 +225,7 @@ void skynet_node_run(void) {
                               "get_pid");
     rclc_service_init_default(&set_oled_service, &node, ROSIDL_GET_SRV_TYPE_SUPPORT(skynet_msgs, srv, SetOled),
                               "set_oled");
+    rclc_service_init_default(&save_service, &node, ROSIDL_GET_SRV_TYPE_SUPPORT(std_srvs, srv, Trigger), "save_flash");
 
     rclc_subscription_init_default(&cmd_vel_subscriber, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
                                    "cmd_vel");
@@ -222,12 +239,13 @@ void skynet_node_run(void) {
 
     rclc_timer_init_default2(&timer, &support, RCL_MS_TO_NS(25), timer_callback, true);
 
-    rclc_executor_init(&executor, &support.context, 6, &allocator);
+    rclc_executor_init(&executor, &support.context, 7, &allocator);
     rclc_executor_add_subscription(&executor, &cmd_vel_subscriber, &cmd_vel_msg, &cmd_vel_callback, ON_NEW_DATA);
     rclc_executor_add_service(&executor, &buzzer_service, &buzzer_req, &buzzer_res, &buzzer_callback);
     rclc_executor_add_service(&executor, &set_pid_service, &set_pid_req, &set_pid_res, &set_pid_callback);
     rclc_executor_add_service(&executor, &get_pid_service, &get_pid_req, &get_pid_res, &get_pid_callback);
     rclc_executor_add_service(&executor, &set_oled_service, &set_oled_req, &set_oled_res, &set_oled_callback);
+    rclc_executor_add_service(&executor, &save_service, &save_req, &save_res, &save_flash_callback);
     rclc_executor_add_timer(&executor, &timer);
 
     geometry_msgs__msg__TwistStamped__init(&vel_raw_msg);
