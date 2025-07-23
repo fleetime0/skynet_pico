@@ -27,5 +27,6 @@ float pid_calc_motor(uint8_t motor_id, float speed_mm_s);
 void pid_set_motor_target(uint8_t motor_id, float target);
 void pid_clear_motor(uint8_t motor_id);
 void pid_set_motor_parm(uint8_t motor_id, float kp, float ki, float kd);
+void pid_get_motor_param(uint8_t motor_id, float *kp, float *ki, float *kd);
 
 #endif // APP_PID_H

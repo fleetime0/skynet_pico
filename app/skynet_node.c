@@ -15,11 +15,16 @@
 #include "rmw_microros/rmw_microros.h"
 #include "rosidl_runtime_c/string_functions.h"
 #include "sensor_msgs/msg/imu.h"
+#include "skynet_msgs/srv/get_pid.h"
+#include "skynet_msgs/srv/set_oled.h"
+#include "skynet_msgs/srv/set_pid.h"
 #include "std_msgs/msg/bool.h"
 #include "std_msgs/msg/float32.h"
+#include "std_srvs/srv/set_bool.h"
 
 #include "app_bat.h"
 #include "app_motion.h"
+#include "app_pid.h"
 #include "bsp_beep.h"
 #include "icm45686.h"
 #include "my_micro_ros.h"
@@ -30,8 +35,21 @@ static rclc_support_t support;
 static rcl_timer_t timer;
 static rclc_executor_t executor;
 
-static rcl_subscription_t buzzer_subscriber;
-static std_msgs__msg__Bool buzzer_msg;
+static rcl_service_t buzzer_service;
+static std_srvs__srv__SetBool_Request buzzer_req;
+static std_srvs__srv__SetBool_Response buzzer_res;
+
+static rcl_service_t set_pid_service;
+static skynet_msgs__srv__SetPID_Request set_pid_req;
+static skynet_msgs__srv__SetPID_Response set_pid_res;
+
+static rcl_service_t get_pid_service;
+static skynet_msgs__srv__GetPID_Request get_pid_req;
+static skynet_msgs__srv__GetPID_Response get_pid_res;
+
+static rcl_service_t set_oled_service;
+static skynet_msgs__srv__SetOled_Request set_oled_req;
+static skynet_msgs__srv__SetOled_Response set_oled_res;
 
 static rcl_subscription_t cmd_vel_subscriber;
 static geometry_msgs__msg__Twist cmd_vel_msg;
@@ -49,6 +67,9 @@ static car_data_t car_speed;
 
 extern imu_norm_data_t norm_data;
 extern SemaphoreHandle_t norm_data_mutex;
+
+extern uint8_t g_oled_flag;
+extern SemaphoreHandle_t oled_flag_mutex;
 
 extern int clock_gettime(clockid_t unused, struct timespec *tp);
 
@@ -120,9 +141,41 @@ static void cmd_vel_callback(const void *msgin) {
   motion_ctrl(vx, vy, vz);
 }
 
-static void buzzer_callback(const void *msgin) {
-  const std_msgs__msg__Bool *msg = (const std_msgs__msg__Bool *) msgin;
-  beep_on_time((uint16_t) (msg->data));
+void buzzer_callback(const void *request, void *response) {
+  const std_srvs__srv__SetBool_Request *req = (const std_srvs__srv__SetBool_Request *) request;
+  std_srvs__srv__SetBool_Response *res = (std_srvs__srv__SetBool_Response *) response;
+
+  beep_on_time((uint16_t) req->data);
+  res->success = true;
+}
+
+void set_pid_callback(const void *request, void *response) {
+  const skynet_msgs__srv__SetPID_Request *req = (const skynet_msgs__srv__SetPID_Request *) request;
+  skynet_msgs__srv__SetPID_Response *res = (skynet_msgs__srv__SetPID_Response *) response;
+
+  pid_set_motor_parm(2, req->kp, req->ki, req->kd);
+  res->success = true;
+}
+
+void get_pid_callback(const void *request, void *response) {
+  (void) request;
+  skynet_msgs__srv__GetPID_Response *res = (skynet_msgs__srv__GetPID_Response *) response;
+
+  pid_get_motor_param(2, &res->kp, &res->ki, &res->kd);
+}
+
+void set_oled_callback(const void *request, void *response) {
+  const skynet_msgs__srv__SetOled_Request *req = (const skynet_msgs__srv__SetOled_Request *) request;
+  skynet_msgs__srv__SetOled_Response *res = (skynet_msgs__srv__SetOled_Response *) response;
+
+  if (req->oled_flag >= 0 && req->oled_flag < 4) {
+    xSemaphoreTake(oled_flag_mutex, portMAX_DELAY);
+    g_oled_flag = req->oled_flag;
+    xSemaphoreGive(oled_flag_mutex);
+    res->success = true;
+  } else {
+    res->success = false;
+  }
 }
 
 void skynet_node_run(void) {
@@ -148,10 +201,17 @@ void skynet_node_run(void) {
     rclc_support_init(&support, 0, NULL, &allocator);
     rclc_node_init_default(&node, NODE_NAME, "", &support);
 
+    rclc_service_init_default(&buzzer_service, &node, ROSIDL_GET_SRV_TYPE_SUPPORT(std_srvs, srv, SetBool),
+                              "set_buzzer");
+    rclc_service_init_default(&set_pid_service, &node, ROSIDL_GET_SRV_TYPE_SUPPORT(skynet_msgs, srv, SetPID),
+                              "set_pid");
+    rclc_service_init_default(&get_pid_service, &node, ROSIDL_GET_SRV_TYPE_SUPPORT(skynet_msgs, srv, GetPID),
+                              "get_pid");
+    rclc_service_init_default(&set_oled_service, &node, ROSIDL_GET_SRV_TYPE_SUPPORT(skynet_msgs, srv, SetOled),
+                              "set_oled");
+
     rclc_subscription_init_default(&cmd_vel_subscriber, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
                                    "cmd_vel");
-    rclc_subscription_init_default(&buzzer_subscriber, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Bool),
-                                   "buzzer");
 
     rclc_publisher_init_default(&vel_raw_publisher, &node,
                                 ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, TwistStamped), "vel_raw");
@@ -162,9 +222,12 @@ void skynet_node_run(void) {
 
     rclc_timer_init_default2(&timer, &support, RCL_MS_TO_NS(25), timer_callback, true);
 
-    rclc_executor_init(&executor, &support.context, 3, &allocator);
+    rclc_executor_init(&executor, &support.context, 6, &allocator);
     rclc_executor_add_subscription(&executor, &cmd_vel_subscriber, &cmd_vel_msg, &cmd_vel_callback, ON_NEW_DATA);
-    rclc_executor_add_subscription(&executor, &buzzer_subscriber, &buzzer_msg, &buzzer_callback, ON_NEW_DATA);
+    rclc_executor_add_service(&executor, &buzzer_service, &buzzer_req, &buzzer_res, &buzzer_callback);
+    rclc_executor_add_service(&executor, &set_pid_service, &set_pid_req, &set_pid_res, &set_pid_callback);
+    rclc_executor_add_service(&executor, &get_pid_service, &get_pid_req, &get_pid_res, &get_pid_callback);
+    rclc_executor_add_service(&executor, &set_oled_service, &set_oled_req, &set_oled_res, &set_oled_callback);
     rclc_executor_add_timer(&executor, &timer);
 
     geometry_msgs__msg__TwistStamped__init(&vel_raw_msg);

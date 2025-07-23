@@ -106,3 +106,20 @@ void pid_set_motor_parm(uint8_t motor_id, float kp, float ki, float kd) {
   }
   xSemaphoreGive(pid_motor_mutex);
 }
+
+void pid_get_motor_param(uint8_t motor_id, float *kp, float *ki, float *kd) {
+  if (motor_id > MAX_MOTOR || kp == NULL || ki == NULL || kd == NULL)
+    return;
+
+  xSemaphoreTake(pid_motor_mutex, portMAX_DELAY);
+  if (motor_id == MAX_MOTOR) {
+    *kp = pid_motor[0].Kp;
+    *ki = pid_motor[0].Ki;
+    *kd = pid_motor[0].Kd;
+  } else {
+    *kp = pid_motor[motor_id].Kp;
+    *ki = pid_motor[motor_id].Ki;
+    *kd = pid_motor[motor_id].Kd;
+  }
+  xSemaphoreGive(pid_motor_mutex);
+}
