@@ -72,7 +72,7 @@ static void skynet_node_task(__unused void *params) { skynet_node_run(); }
 static void app_loop(void) { beep_timeout_close_handle(); }
 
 static void app_task(__unused void *params) {
-  // beep_on_time(100);
+  beep_on_time(100);
   while (true) {
     vTaskDelay(10);
     if (bat_show_led_handle(g_enable_beep))
