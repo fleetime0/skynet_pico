@@ -14,6 +14,11 @@ target_link_libraries(app
     my_micro_ros
     bsp
     icm45686
+    pid_debug
+)
+
+target_compile_definitions(app PRIVATE
+    PID_ASSISTANT_EN=0
 )
 
 target_include_directories(app PUBLIC

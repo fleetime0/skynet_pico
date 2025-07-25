@@ -18,6 +18,7 @@
 #include "bsp_encoder.h"
 #include "bsp_key.h"
 #include "icm45686.h"
+#include "pid_debug.h"
 #include "skynet_node.h"
 
 #define CORE(n) (1U << (n))
@@ -27,17 +28,20 @@
 #define APP_TASK_PRIORITY (tskIDLE_PRIORITY + 3UL)
 #define KEY_TASK_PRIORITY (tskIDLE_PRIORITY + 4UL)
 #define SKYNET_NODE_TASK_PRIORITY (tskIDLE_PRIORITY + 5UL)
-#define SPEED_TASK_PRIORITY (tskIDLE_PRIORITY + 6UL)
+#define PID_DEBUG_TASK_PRIORITY (tskIDLE_PRIORITY + 6UL)
+#define SPEED_TASK_PRIORITY (tskIDLE_PRIORITY + 7UL)
 
 #define OLED_TASK_STACK_SIZE configMINIMAL_STACK_SIZE
 #define IMU_TASK_STACK_SIZE configMINIMAL_STACK_SIZE
 #define APP_TASK_STACK_SIZE configMINIMAL_STACK_SIZE
 #define KEY_TASK_STACK_SIZE configMINIMAL_STACK_SIZE
 #define SKYNET_NODE_STACK_SIZE 1024
+#define PID_DEBUG_STACK_SIZE configMINIMAL_STACK_SIZE
 #define SPEED_TASK_STACK_SIZE configMINIMAL_STACK_SIZE
 
 static TaskHandle_t speed_task_handle = NULL;
 static TaskHandle_t skynet_task_handle = NULL;
+static TaskHandle_t pid_debug_task_handle = NULL;
 static TaskHandle_t key_task_handle = NULL;
 static TaskHandle_t app_task_handle = NULL;
 static TaskHandle_t imu_task_handle = NULL;
@@ -67,7 +71,16 @@ static void speed_task(__unused void *params) {
   }
 }
 
-static void skynet_node_task(__unused void *params) { skynet_node_run(); }
+static void skynet_node_task(__unused void *params) {
+#if PID_ASSISTANT_EN
+  while (system_enable()) {
+    pid_debug_run();
+    vTaskDelay(1);
+  }
+#else
+  skynet_node_run();
+#endif
+}
 
 static void app_loop(void) { beep_timeout_close_handle(); }
 
@@ -182,6 +195,14 @@ static void oled_task(__unused void *params) {
   }
 }
 
+static void pid_debug_task(__unused void *params) {
+  uint32_t last_wake_time = xTaskGetTickCount();
+  while (system_enable()) {
+    pid_debug_send();
+    vTaskDelayUntil(&last_wake_time, 10);
+  }
+}
+
 void app_init(void) {
   app_bat_init();
   pid_param_init();
@@ -201,12 +222,21 @@ void app_init(void) {
       ;
   }
   icm45686_calibrate_gyro_bias();
+
   // DEBUG("ICM_INIT OK\n");
+
+#if PID_ASSISTANT_EN
+  pid_debug_init();
+#endif
 }
 
 void app_start_freertos(void) {
   xTaskCreate(speed_task, "SpeedTaskThread", SPEED_TASK_STACK_SIZE, NULL, SPEED_TASK_PRIORITY, &speed_task_handle);
   printf("start SpeedTaskThread\n");
+#if PID_ASSISTANT_EN
+  xTaskCreate(pid_debug_task, "PidDebugThread", PID_DEBUG_STACK_SIZE, NULL, PID_DEBUG_TASK_PRIORITY,
+              &pid_debug_task_handle);
+#endif
   xTaskCreate(skynet_node_task, "SkynetNodeThread", SKYNET_NODE_STACK_SIZE, NULL, SKYNET_NODE_TASK_PRIORITY,
               &skynet_task_handle);
   xTaskCreate(key_task, "KeyTaskThread", KEY_TASK_STACK_SIZE, NULL, KEY_TASK_PRIORITY, &key_task_handle);
@@ -224,6 +254,9 @@ void app_start_freertos(void) {
   vTaskCoreAffinitySet(app_task_handle, CORE(0));
   vTaskCoreAffinitySet(imu_task_handle, CORE(0));
   vTaskCoreAffinitySet(oled_task_handle, CORE(0));
+#if PID_ASSISTANT_EN
+  vTaskCoreAffinitySet(pid_debug_task_handle, CORE(1));
+#endif
   vTaskCoreAffinitySet(skynet_task_handle, CORE(1));
 #endif
 

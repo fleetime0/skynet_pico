@@ -46,5 +46,6 @@ void bsp_init(void) {
 
 void bsp_reset_mcu(void) {
   printf("Reset MCU\n");
+  sleep_ms(100);
   watchdog_reboot(0, 0, 0);
 }

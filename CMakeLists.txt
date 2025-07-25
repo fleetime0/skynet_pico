@@ -38,6 +38,7 @@ add_subdirectory(micro_ros)
 add_subdirectory(bsp)
 add_subdirectory(icm45686)
 add_subdirectory(app)
+add_subdirectory(pid_debug)
 
 # Add executable. Default name is the project name, version 0.1
 
