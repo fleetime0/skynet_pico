@@ -1,13 +1,12 @@
 #include "skynet_node.h"
 
-#include <time.h>
-
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "task.h"
 
 #include "geometry_msgs/msg/twist.h"
 #include "geometry_msgs/msg/twist_stamped.h"
+#include "nav_msgs/msg/odometry.h"
 #include "rcl/error_handling.h"
 #include "rcl/rcl.h"
 #include "rclc/executor.h"
@@ -69,6 +68,12 @@ static std_msgs__msg__Float32 voltage_msg;
 static rcl_publisher_t imu_publisher;
 static sensor_msgs__msg__Imu imu_msg;
 
+static rcl_publisher_t imu_raw_publisher;
+static sensor_msgs__msg__Imu imu_raw_msg;
+
+static rcl_publisher_t odom_publisher;
+static nav_msgs__msg__Odometry odom_msg;
+
 static car_data_t car_speed;
 
 extern imu_norm_data_t norm_data;
@@ -77,27 +82,194 @@ extern SemaphoreHandle_t norm_data_mutex;
 extern uint8_t g_oled_flag;
 extern SemaphoreHandle_t oled_flag_mutex;
 
-extern int clock_gettime(clockid_t unused, struct timespec *tp);
+// static float odom_pos_x = 0.0f;
+// static float odom_pos_y = 0.0f;
+// static float odom_yaw_rad = 0.0f;
+// static const float odom_dt = 0.1f;
+static int64_t last_odom_time_ns = 0;
+static float q0 = 0.0f, q1 = 0.0f, q2 = 0.0f, q3 = 0.0f;
+// static float yaw = 0.0f, roll = 0.0f, pitch = 0.0f;
+
+static void publish_speed(void) {
+  if (rmw_uros_epoch_synchronized()) {
+    int64_t time_ns = rmw_uros_epoch_nanos();
+    vel_raw_msg.header.stamp.sec = (int32_t) (time_ns / 1000000000);
+    vel_raw_msg.header.stamp.nanosec = (int32_t) (time_ns % 1000000000);
+
+    motion_get_speed(&car_speed);
+
+    vel_raw_msg.twist.linear.x = car_speed.vx / 1000.f;
+    vel_raw_msg.twist.linear.y = car_speed.vy / 1000.f;
+    vel_raw_msg.twist.linear.z = 0;
+
+    vel_raw_msg.twist.angular.x = 0;
+    vel_raw_msg.twist.angular.y = 0;
+    vel_raw_msg.twist.angular.z = car_speed.vz / 1000.0f;
+    rcl_ret_t ret = rcl_publish(&vel_raw_publisher, &vel_raw_msg, NULL);
+    (void) ret;
+  }
+}
+
+static void publish_imu(void) {
+  if (rmw_uros_epoch_synchronized()) {
+    int64_t time_ns = rmw_uros_epoch_nanos();
+    imu_msg.header.stamp.sec = (int32_t) (time_ns / 1000000000);
+    imu_msg.header.stamp.nanosec = (int32_t) (time_ns % 1000000000);
+
+    xSemaphoreTake(norm_data_mutex, portMAX_DELAY);
+    get_quaternion(&q0, &q1, &q2, &q3);
+    imu_msg.orientation.w = q0;
+    imu_msg.orientation.x = q1;
+    imu_msg.orientation.y = q2;
+    imu_msg.orientation.z = q3;
+
+    imu_msg.linear_acceleration.x = norm_data.ax;
+    imu_msg.linear_acceleration.y = norm_data.ay;
+    imu_msg.linear_acceleration.z = norm_data.az;
+
+    imu_msg.angular_velocity.x = norm_data.gx;
+    imu_msg.angular_velocity.y = norm_data.gy;
+    imu_msg.angular_velocity.z = norm_data.gz;
+
+    imu_msg.orientation_covariance[0] = 0.0025f;
+    imu_msg.orientation_covariance[4] = 0.0025f;
+    imu_msg.orientation_covariance[8] = 0.0025f;
+
+    xSemaphoreGive(norm_data_mutex);
+    rcl_ret_t ret = rcl_publish(&imu_publisher, &imu_msg, NULL);
+    (void) ret;
+  }
+}
+
+static void publish_imu_raw(void) {
+  if (rmw_uros_epoch_synchronized()) {
+    int64_t time_ns = rmw_uros_epoch_nanos();
+    imu_raw_msg.header.stamp.sec = (int32_t) (time_ns / 1000000000);
+    imu_raw_msg.header.stamp.nanosec = (int32_t) (time_ns % 1000000000);
+
+    xSemaphoreTake(norm_data_mutex, portMAX_DELAY);
+    imu_raw_msg.linear_acceleration.x = norm_data.ax;
+    imu_raw_msg.linear_acceleration.y = norm_data.ay;
+    imu_raw_msg.linear_acceleration.z = norm_data.az;
+    imu_raw_msg.angular_velocity.x = norm_data.gx;
+    imu_raw_msg.angular_velocity.y = norm_data.gy;
+    imu_raw_msg.angular_velocity.z = norm_data.gz;
+    imu_raw_msg.orientation_covariance[0] = -1.0f;
+    xSemaphoreGive(norm_data_mutex);
+    rcl_ret_t ret = rcl_publish(&imu_raw_publisher, &imu_raw_msg, NULL);
+    (void) ret;
+  }
+}
+
+//   void handle_vel(const std::shared_ptr<geometry_msgs::msg::Twist > msg)
+//   {
+//       //geometry_msgs::msg::Twist twist;
+
+//   	rclcpp::Time curren_time = rclcpp::Clock().now();
+//   	linear_velocity_x_ = msg->linear.x * linear_scale_x_;// scale = 1
+// 	linear_velocity_y_ = msg->linear.y * linear_scale_y_;
+// 	angular_velocity_z_ = msg->angular.z ;
+// vel_dt_ = (curren_time - last_vel_time_).seconds();
+//       //std::cout<<"curren_time: "<<curren_time.seconds()<<std::endl;
+//      // std::cout<<"vel_dt: "<<vel_dt_<<std::endl;
+// 	last_vel_time_ = curren_time;
+// double steer_angle = linear_velocity_y_;
+// double MI_PI = 3.1416;
+
+// 	double delta_heading = angular_velocity_z_ * vel_dt_; //radians
+// 	double delta_x = (linear_velocity_x_ * cos(heading_)-linear_velocity_y_*sin(heading_)) * vel_dt_; //m
+// 	double delta_y = (linear_velocity_x_ * sin(heading_)+linear_velocity_y_*cos(heading_)) * vel_dt_; //m
+// x_pos_ += delta_x;
+// 	y_pos_ += delta_y;
+// heading_ += delta_heading;
+
+//       tf2::Quaternion myQuaternion;
+// geometry_msgs::msg::Quaternion odom_quat ;
+// myQuaternion.setRPY(0.00,0.00,heading_ );
+
+//       odom_quat.x = myQuaternion.x();
+//       odom_quat.y = myQuaternion.y();
+//       odom_quat.z = myQuaternion.z();
+//       odom_quat.w = myQuaternion.w();
+
+// nav_msgs::msg::Odometry odom;
+// odom.header.stamp = curren_time;
+// odom.header.frame_id = odom_frame;
+// odom.child_frame_id =  base_footprint_frame;
+// // robot's position in x,y and z
+// odom.pose.pose.position.x = x_pos_;
+// odom.pose.pose.position.y = y_pos_;
+// odom.pose.pose.position.z = 0.0;
+// // robot's heading in quaternion
+
+//       odom.pose.pose.orientation = odom_quat;
+// odom.pose.covariance[0] = 0.001;
+// odom.pose.covariance[7] = 0.001;
+// odom.pose.covariance[35] = 0.001;
+// // linear speed from encoders
+// odom.twist.twist.linear.x = linear_velocity_x_;
+// odom.twist.twist.linear.y = linear_velocity_y_;
+// odom.twist.twist.linear.y = 0.0; // vy = 0.0
+// odom.twist.twist.linear.z = 0.0;
+// odom.twist.twist.angular.x = 0.0;
+// odom.twist.twist.angular.y = 0.0;
+// // angular speed from encoders
+// odom.twist.twist.angular.z = angular_velocity_z_;
+// odom.twist.covariance[0] = 0.0001;
+// odom.twist.covariance[7] = 0.0001;
+// odom.twist.covariance[35] = 0.0001;
+// // ROS_INFO("ODOM PUBLISH");
+// odom_publisher_ -> publish(odom);
+
+static void publish_odom(void) {
+  if (rmw_uros_epoch_synchronized()) {
+    int64_t curren_time_ns = rmw_uros_epoch_nanos();
+    int64_t odom_dt = curren_time_ns - last_odom_time_ns / ;
+  }
+  // if (rmw_uros_epoch_synchronized()) {
+  //   int64_t time_ns = rmw_uros_epoch_nanos();
+  //   odom_msg.header.stamp.sec = (int32_t) (time_ns / 1000000000);
+  //   odom_msg.header.stamp.nanosec = (int32_t) (time_ns % 1000000000);
+
+  //   xSemaphoreTake(norm_data_mutex, portMAX_DELAY);
+  //   get_quaternion(&q0, &q1, &q2, &q3);
+  //   get_euler_angle(&roll, &pitch, &yaw);
+  //   xSemaphoreGive(norm_data_mutex);
+
+  //   odom_msg.pose.pose.orientation.w = q0;
+  //   odom_msg.pose.pose.orientation.x = q1;
+  //   odom_msg.pose.pose.orientation.y = q2;
+  //   odom_msg.pose.pose.orientation.z = q3;
+
+  //   motion_get_speed(&car_speed);
+  //   float vx = car_speed.vx / 1000.f;
+  //   float vy = car_speed.vy / 1000.f;
+  //   float vz = car_speed.vz / 1000.f;
+
+  //   odom_yaw_rad += vz * odom_dt;
+
+  //   odom_pos_x += vx * cosf(odom_yaw_rad) * odom_dt;
+  //   odom_pos_y += vx * sinf(odom_yaw_rad) * odom_dt;
+
+  //   odom_msg.pose.pose.position.x = odom_pos_x;
+  //   odom_msg.pose.pose.position.y = odom_pos_y;
+  //   odom_msg.pose.pose.position.z = 0.0;
+
+  //   odom_msg.twist.twist.linear.x = vx;
+  //   odom_msg.twist.twist.linear.y = vy;
+  //   odom_msg.twist.twist.angular.z = vz;
+
+  //   rcl_ret_t ret = rcl_publish(&odom_publisher, &odom_msg, NULL);
+  //   (void) ret;
+  // }
+}
 
 static void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
   static uint8_t tick = 0;
-  struct timespec tv = {0};
+
   switch (tick % 4) {
     case 0: {
-      clock_gettime(0, &tv);
-      motion_get_speed(&car_speed);
-      vel_raw_msg.header.stamp.sec = tv.tv_sec;
-      vel_raw_msg.header.stamp.nanosec = tv.tv_nsec;
-
-      vel_raw_msg.twist.linear.x = car_speed.vx / 1000.f;
-      vel_raw_msg.twist.linear.y = car_speed.vy / 1000.f;
-      vel_raw_msg.twist.linear.z = 0;
-
-      vel_raw_msg.twist.angular.x = 0;
-      vel_raw_msg.twist.angular.y = 0;
-      vel_raw_msg.twist.angular.z = car_speed.vz / 1000.0f;
-      rcl_ret_t ret = rcl_publish(&vel_raw_publisher, &vel_raw_msg, NULL);
-      (void) ret;
+      publish_speed();
       break;
     }
     case 1: {
@@ -107,23 +279,11 @@ static void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
       break;
     }
     case 2: {
-      clock_gettime(0, &tv);
-      xSemaphoreTake(norm_data_mutex, portMAX_DELAY);
-      imu_msg.header.stamp.nanosec = tv.tv_nsec;
-      imu_msg.header.stamp.sec = tv.tv_sec;
-      imu_msg.linear_acceleration.x = norm_data.ax;
-      imu_msg.linear_acceleration.y = norm_data.ay;
-      imu_msg.linear_acceleration.z = norm_data.az;
-      imu_msg.angular_velocity.x = norm_data.gx;
-      imu_msg.angular_velocity.y = norm_data.gy;
-      imu_msg.angular_velocity.z = norm_data.gz;
-      imu_msg.orientation_covariance[0] = -1.0f;
-      xSemaphoreGive(norm_data_mutex);
-      rcl_ret_t ret = rcl_publish(&imu_publisher, &imu_msg, NULL);
-      (void) ret;
+      publish_imu_raw();
       break;
     }
     case 3: {
+      // publish_odom();
       break;
     }
     default:
@@ -234,8 +394,10 @@ void skynet_node_run(void) {
                                 ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, TwistStamped), "vel_raw");
     rclc_publisher_init_default(&voltage_publisher, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32),
                                 "voltage");
-    rclc_publisher_init_default(&imu_publisher, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
+    rclc_publisher_init_default(&imu_raw_publisher, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
                                 "imu/data_raw");
+    rclc_publisher_init_default(&imu_publisher, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu), "imu/data");
+    rclc_publisher_init_default(&odom_publisher, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry), "odom");
 
     rclc_timer_init_default2(&timer, &support, RCL_MS_TO_NS(25), timer_callback, true);
 
@@ -250,9 +412,17 @@ void skynet_node_run(void) {
 
     geometry_msgs__msg__TwistStamped__init(&vel_raw_msg);
     sensor_msgs__msg__Imu__init(&imu_msg);
+    sensor_msgs__msg__Imu__init(&imu_raw_msg);
+    nav_msgs__msg__Odometry__init(&odom_msg);
     voltage_msg.data = 0.0f;
     rosidl_runtime_c__String__assign(&imu_msg.header.frame_id, "imu_link");
+    rosidl_runtime_c__String__assign(&imu_raw_msg.header.frame_id, "imu_link");
     rosidl_runtime_c__String__assign(&vel_raw_msg.header.frame_id, "base_link");
+    rosidl_runtime_c__String__assign(&odom_msg.header.frame_id, "odom");
+    rosidl_runtime_c__String__assign(&odom_msg.child_frame_id, "base_link");
+
+    rmw_uros_sync_session(timeout_ms);
+
     while (true) {
       rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1));
       taskYIELD();
